@@ -15,6 +15,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 
 import javafx.application.Application;
+import javafx.application.HostServices;
 import javafx.beans.binding.Bindings;
 import javafx.beans.binding.StringBinding;
 import javafx.beans.property.SimpleObjectProperty;
@@ -22,11 +23,17 @@ import javafx.collections.transformation.FilteredList;
 import javafx.collections.transformation.SortedList;
 import javafx.geometry.Insets;
 import javafx.scene.Node;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.Control;
+import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.control.Slider;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TabPane;
+import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
@@ -37,18 +44,41 @@ import javafx.scene.layout.GridPane;
 import javafx.stage.Stage;
 
 public class JsonTableViewer extends Application {
-    // private JsonArray data = null;
+    static HostServices hostServices;
     
     @Override
     public void start(Stage primaryStage) {
+        hostServices = getHostServices();
         primaryStage.setTitle("JSON Table Viewer");
-        JsonArray data = getData();
-        TableViewJson tableView = new TableViewJson(data);
+        JsonElement dataEl = getData();
+        Parent root = null;
+        if (dataEl.isJsonArray()) {
+            root = getTableNode(dataEl.getAsJsonArray());
+        } else if (dataEl.isJsonObject()) {
+            var tabPane = new TabPane();
+            var objectWithArrays = dataEl.getAsJsonObject();
+            for (var entry : objectWithArrays.entrySet()) {
+                if (entry.getValue().isJsonArray()) {
+                    String tableName = entry.getKey();
+                    JsonArray data = entry.getValue().getAsJsonArray();
+                    var tab = new Tab(tableName, getTableNode(data));
+                    tabPane.getTabs().add(tab);
+                }
+            }
+            root = tabPane;
+        }
         
-        BorderPane root = new BorderPane();
+        
+        
         Scene scene = new Scene(root,500,300);
         primaryStage.setScene(scene);
         primaryStage.show();
+        
+    }
+
+    private BorderPane getTableNode(JsonArray data) {
+        TableViewJson tableView = new TableViewJson(data);
+        BorderPane root = new BorderPane();
         var zp = new ZoomingPane(tableView);
         tableView.addEventFilter(ScrollEvent.SCROLL, e -> {
             if (e.isControlDown()) {
@@ -63,22 +93,10 @@ public class JsonTableViewer extends Application {
                 e.consume();
             }
         });
-        // tableView.col
-        /* zp.setOnScroll((eh) -> {
-            System.out.println(eh);
-        });
-        tableView.setOnScroll((eh) -> {
-            System.out.println("TABLEVIEW SCROLL");
-            System.out.println(eh);
-        }); */
-        // Slider slider = new Slider(0.5,2,1);
-        // zp.zoomFactorProperty().bind(slider.valueProperty());
-        // root.setBottom(slider);
-        // root.setCenter(tableView);
         root.setCenter(zp);
         root.setTop(getSearchField(tableView));
-        // System.out.println(tableView.getParent());
         root.setBottom(buildCommonControl(tableView));
+        return root;
     }
 
     private Node getSearchField(TableView<MyObject> tableView) {
@@ -187,16 +205,6 @@ public class JsonTableViewer extends Application {
         /* Slider sliderY = new Slider(0, 100, 0);
         tableView.translateYProperty().bindBidirectional(sliderY.valueProperty());
         grid.add(sliderY, 0, row++); */
-
-
-        // tableView.onZoomStartedProperty();
-        /* tableView.setOnZoomStarted((eh) ->{
-            System.out.println(eh);
-        }); 
-        tableView.setOnScroll((eh) -> {
-            System.out.println(eh);
-        });*/
-
         var tp = new TitledPane("TableView Options", grid);
         tp.setExpanded(false);
         return tp;
@@ -224,12 +232,11 @@ public class JsonTableViewer extends Application {
         return sj.toString();
     }
 
-    private JsonArray getData() {
+    private JsonElement getData() {
         var params = getParameters().getRaw();
         String dataJson = null;
         
         try {
-            System.out.println("System.in.available(): "+System.in.available());
             if (System.in.available() > 0) {
                 dataJson = readFromStdin();
             }
@@ -239,14 +246,26 @@ public class JsonTableViewer extends Application {
             else if (params.get(0).equals("-")) {
                 dataJson = readFromStdin();
             } 
-            else {
+            else if (params.size() == 1) {
                 dataJson = Files.readString(Path.of(params.get(0)), Charset.forName("UTF-8"));
+            } 
+            else if (params.size() > 1) {
+                // var jsonArray = new JsonArray();
+                var gsonObj = new JsonObject();
+                int i = 0;
+                for (var filePath : params) {
+                    String arrJsonStr = Files.readString(Path.of(params.get(i++)), Charset.forName("UTF-8"));
+                    JsonArray arrGson = new Gson().fromJson(arrJsonStr, JsonArray.class);
+                    String filename = filePath.replaceAll("^.*[\\\\/]", "");
+                    gsonObj.add(filename, arrGson);
+                }
+                return gsonObj;
             }
         } catch (Exception e) {
             e.printStackTrace();
             dataJson = getSampleData();
         }
-        return new Gson().fromJson(dataJson, JsonArray.class);
+        return new Gson().fromJson(dataJson, JsonElement.class);
     }
 
     public static void main(String[] args) {
@@ -299,6 +318,25 @@ class TableViewJson extends TableView<MyObject> {
                     }
                     return new SimpleObjectProperty<>(value);
                 });
+
+                boolean isLink = referenceDataObj.getColumn(columnIndex).getAsString().startsWith("http");
+                if (isLink) {
+                    // final Application = this;
+                    column.setCellFactory(tc -> {
+                        var cell = new TableCell<MyObject, String>();
+                        var hl = new Hyperlink();
+                        cell.setGraphic(hl);
+                        cell.setPrefHeight(Control.USE_COMPUTED_SIZE);
+                        // TODO: How to prevent "null" being shown when there is no link?
+                        hl.textProperty().bind(cell.itemProperty().asString());
+                        // hl.setText(cell.itemProperty().asString().get());
+                        hl.setOnAction((ae) -> {
+                            // TODO: How to get parent Application?
+                            JsonTableViewer.hostServices.showDocument(hl.textProperty().get());
+                        });
+                        return cell;
+                    });
+                }
                 
                 /* // this makes word wrap but how do you toggle it?
                 column.setCellFactory(tc -> {
