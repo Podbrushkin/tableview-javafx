@@ -6,6 +6,7 @@ import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.StringJoiner;
 
 import com.google.gson.Gson;
@@ -27,9 +28,11 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.Control;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
+import javafx.scene.control.RadioButton;
 import javafx.scene.control.Slider;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
@@ -38,10 +41,14 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TitledPane;
+import javafx.scene.control.ToggleGroup;
+import javafx.scene.control.TableView.ResizeFeatures;
 import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
+import javafx.util.Callback;
 
 public class JsonTableViewer extends Application {
     static HostServices hostServices;
@@ -122,15 +129,79 @@ public class JsonTableViewer extends Application {
         grid.setHgap(5);
         grid.setVgap(10);
         grid.setPadding(new Insets(5, 5, 5, 5));
-
         int row = 0;
 
-        CheckBox constrainedColumnPolicy = new CheckBox("Constrained Column Policy");
+        /* CheckBox constrainedColumnPolicy = new CheckBox("Constrained Column Policy");
         constrainedColumnPolicy.setSelected(tableView.getColumnResizePolicy().equals(TableView.CONSTRAINED_RESIZE_POLICY));
         // Bindings.when(constrainedColumnPolicy.selectedProperty()).then(TableView.CONSTRAINED_RESIZE_POLICY).otherwise(TableView.UNCONSTRAINED_RESIZE_POLICY).bind(tableView.columnResizePolicyProperty());
         tableView.columnResizePolicyProperty().bind(Bindings.when(constrainedColumnPolicy.selectedProperty()).then(TableView.CONSTRAINED_RESIZE_POLICY).otherwise(TableView.UNCONSTRAINED_RESIZE_POLICY));
         // constrainedColumnPolicy.selectedProperty().bind(null);
-        grid.add(constrainedColumnPolicy, 0, row++);
+        grid.add(constrainedColumnPolicy, 0, row++); */
+
+        
+
+        var resizePolicies = new ArrayList<Callback<ResizeFeatures, Boolean>>();
+        resizePolicies.add(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
+        resizePolicies.add(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
+        resizePolicies.add(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_NEXT_COLUMN);
+        resizePolicies.add(TableView.CONSTRAINED_RESIZE_POLICY_LAST_COLUMN);
+        resizePolicies.add(TableView.CONSTRAINED_RESIZE_POLICY_NEXT_COLUMN);
+        resizePolicies.add(TableView.CONSTRAINED_RESIZE_POLICY_SUBSEQUENT_COLUMNS);
+        resizePolicies.add(TableView.UNCONSTRAINED_RESIZE_POLICY);
+
+        // var resizePoliciesNames = new ArrayList<String>();
+        var resizePoliciesNames = new String[] {
+            "CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS",
+            "CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN",
+            "CONSTRAINED_RESIZE_POLICY_FLEX_NEXT_COLUMN",
+            "CONSTRAINED_RESIZE_POLICY_LAST_COLUMN",
+            "CONSTRAINED_RESIZE_POLICY_NEXT_COLUMN",
+            "CONSTRAINED_RESIZE_POLICY_SUBSEQUENT_COLUMNS",
+            "UNCONSTRAINED_RESIZE_POLICY"
+        };
+
+        /* // var radioButtons = new ArrayList<RadioButton>();
+        ToggleGroup tg = new ToggleGroup();
+        var radioButtons = new HBox();
+        radioButtons.setSpacing(5);
+        int i = 0;
+        for (var rp : resizePolicies) {
+            RadioButton rb = new RadioButton();
+            rb.setToggleGroup(tg);
+            final int iDup = i++;
+            rb.setOnAction(ea -> {
+                tableView.setColumnResizePolicy(rp); 
+                policyLabel.setText(resizePoliciesNames[iDup]);
+            });
+            // radioButtons.add(rb);
+            radioButtons.getChildren().add(rb);
+        }
+        
+        grid.add(radioButtons, 0, row++); */
+
+        var policyLabel = new Label("Resize Policy:");
+        var cb = new ChoiceBox<String>();
+        cb.setPrefWidth(160);
+        // cb.setPrefWidth(grid.getCellBounds(0, 0).getWidth());
+        
+        // var firstColumnConstraints = grid.getColumnConstraints().get(0);
+        // cb.prefWidthProperty().bind(firstColumnConstraints.prefWidthProperty());
+        
+        cb.getItems().addAll(resizePoliciesNames);
+        cb.setOnAction(ea -> {
+            int choice = cb.getSelectionModel().getSelectedIndex();
+            tableView.setColumnResizePolicy(resizePolicies.get(choice));
+        });
+        cb.getSelectionModel().selectFirst();
+        grid.add(policyLabel, 0, row++);
+        grid.add(cb, 0, row++);
+    
+
+        /* RadioButton rb1 = new RadioButton("CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS");
+        rb1.setToggleGroup(tg);
+        rb1.setOnAction(ea -> {
+            tableView.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
+        }); */
 
         var parent = tableView.getParent();
         if (parent != null && parent instanceof ZoomingPane) {
