@@ -6,21 +6,18 @@ import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Scanner;
 import java.util.StringJoiner;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 
 import javafx.application.Application;
 import javafx.beans.binding.Bindings;
 import javafx.beans.binding.StringBinding;
-import javafx.beans.property.ReadOnlyBooleanWrapper;
-import javafx.beans.property.SimpleFloatProperty;
-import javafx.beans.property.SimpleIntegerProperty;
-import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.SimpleObjectProperty;
 import javafx.collections.transformation.FilteredList;
 import javafx.collections.transformation.SortedList;
 import javafx.geometry.Insets;
@@ -79,9 +76,9 @@ public class JsonTableViewer extends Application {
         // root.setBottom(slider);
         // root.setCenter(tableView);
         root.setCenter(zp);
-        // root.setTop(getSearchField(tableView));
+        root.setTop(getSearchField(tableView));
         // System.out.println(tableView.getParent());
-        // root.setBottom(buildCommonControl(tableView));
+        root.setBottom(buildCommonControl(tableView));
     }
 
     private Node getSearchField(TableView<MyObject> tableView) {
@@ -94,7 +91,7 @@ public class JsonTableViewer extends Application {
         tf.setPromptText(String.format("Search across %s rows...",sortableData.size()));
         tf.textProperty().addListener((obsVal,oldVal,newVal) -> {
             filteredList.setPredicate((obj) -> {
-                return obj.toString().contains(newVal);
+                return obj.toString().toLowerCase().contains(newVal.toLowerCase());
             });
         });
         return tf;
@@ -124,23 +121,23 @@ public class JsonTableViewer extends Application {
             zoomingPane.zoomFactorProperty().bindBidirectional(slider.valueProperty());
             
 
-            var resetZoom = new Button("\u21BA");
-            resetZoom.setOnAction(ea -> {
+            var resetScaling = new Button("\u21BA");
+            resetScaling.setOnAction(ea -> {
                zoomingPane.zoomFactorProperty().set(1); 
             });
             
             
-            var label = new Label("Zoom: ");
+            var label = new Label();
             label.textProperty().bind(new StringBinding() {
                 { bind(slider.valueProperty()); }
                 
                 @Override protected String computeValue() {
-                    return String.format("Zoom: %.1f", slider.getValue());
+                    return String.format("Scaling: %.1f", slider.getValue());
                 }
             });
             grid.add(label, 0, row++);
             grid.add(slider, 0, row++);
-            grid.add(resetZoom, 1, row-1);
+            grid.add(resetScaling, 1, row-1);
         }
         {
             CheckBox fixedCellSize = new CheckBox("Fixed");
@@ -207,7 +204,7 @@ public class JsonTableViewer extends Application {
 
     private static String getSampleData() {
         return """
-        [{"lang_id":1,"lang_name":"Afrikaans","lang_code":"afr","latin_script":"\\\\N"},{"lang_id":2,"lang_name":"Albanian","lang_code":"alb","latin_script":"\\\\N"},{"lang_id":3,"lang_name":"Ancient Greek","lang_code":"grc","latin_script":"No"},{"lang_id":4,"lang_name":"Arabic","lang_code":"ara","latin_script":"No"},{"lang_id":5,"lang_name":"Armenian","lang_code":"arm","latin_script":"No"},{"lang_id":6,"lang_name":"Azerbaijani","lang_code":"aze","latin_script":"\\\\N"},{"lang_id":7,"lang_name":"Basque","lang_code":"baq","latin_script":"\\\\N"},{"lang_id":8,"lang_name":"Belarusian","lang_code":"bel","latin_script":"No"},{"lang_id":9,"lang_name":"Bengali","lang_code":"ben","latin_script":"No"},{"lang_id":10,"lang_name":"Bulgarian","lang_code":"bul","latin_script":"No"}]
+        [{"lang_id":1,"lang_name":"Afrikaans","lang_code":"afr","latin_script":null},{"lang_id":11,"lang_name":"Albanian","lang_code":"alb","latin_script":null},{"lang_id":20,"lang_name":"Ancient Greek","lang_code":"grc","latin_script":false},{"lang_id":4,"lang_name":"Arabic","lang_code":"ara","latin_script":false},{"lang_id":5,"lang_name":"Armenian","lang_code":"arm","latin_script":false},{"lang_id":6,"lang_name":"Azerbaijani","lang_code":"aze","latin_script":null},{"lang_id":7,"lang_name":"Basque","lang_code":"baq","latin_script":null},{"lang_id":8,"lang_name":"Belarusian","lang_code":"bel","latin_script":false},{"lang_id":null,"lang_name":"Bengali","lang_code":"ben","latin_script":false},{"lang_id":10,"lang_name":null,"lang_code":"bul","latin_script":false}]
         """;
     }
     private static String readFromStdin() throws IOException {
@@ -228,11 +225,9 @@ public class JsonTableViewer extends Application {
     }
 
     private JsonArray getData() {
-        
         var params = getParameters().getRaw();
-        System.out.println(params.size());
         String dataJson = null;
-        // Scanner sc = null;
+        
         try {
             System.out.println("System.in.available(): "+System.in.available());
             if (System.in.available() > 0) {
@@ -270,20 +265,35 @@ class TableViewJson extends TableView<MyObject> {
     }
 
     private void createColumns() {
-        var firstJsonObj = data.get(0).getAsJsonObject();
-            // String[] headers = (String[])jsonObj.keySet().toArray();
-        String[] headers = firstJsonObj.keySet().toArray(new String[0]);
+        var referenceJsonObj = data.get(0).getAsJsonObject();
+        String[] headers = referenceJsonObj.keySet().toArray(new String[0]);
 
         for (int i = 0; i < headers.length; i++) {
             final int columnIndex = i; // Final variable for use in lambda
             
-            Class clazz = getType(new MyObject(firstJsonObj).getColumn(i));
+            // find an object where value for this column is not null
+            MyObject referenceDataObj = null;
+            for (int j = 0; j < data.size(); j++) {
+                MyObject tmpDataObj = new MyObject(data.get(j).getAsJsonObject());
+                if (tmpDataObj.getColumn(columnIndex).isJsonPrimitive()) {
+                    referenceDataObj = tmpDataObj;
+                    break;
+                }
+
+            }
+
+            Class clazz = getType(referenceDataObj.getColumn(columnIndex).getAsJsonPrimitive());
             
             if (String.class.isAssignableFrom(clazz)) {
                 TableColumn<MyObject, String> column = new TableColumn<>(headers[i]);
-                column.setCellValueFactory(cellData -> 
-                    new SimpleStringProperty(cellData.getValue().getColumn(columnIndex).toString())
-                    );
+                column.setCellValueFactory(cellData -> {
+                    String value = null;
+                    JsonElement element = cellData.getValue().getColumn(columnIndex);
+                    if (element != null && !element.isJsonNull()) {
+                        value = element.getAsString();
+                    }
+                    return new SimpleObjectProperty<>(value);
+                });
                 
                 /* // this makes word wrap but how do you toggle it?
                 column.setCellFactory(tc -> {
@@ -299,25 +309,38 @@ class TableViewJson extends TableView<MyObject> {
             }
             if (Integer.class.isAssignableFrom(clazz)) {
                 TableColumn<MyObject, Integer> column = new TableColumn<>(headers[i]);
-                column.setCellValueFactory(cellData -> 
-                    // new ReadOnlyIntegerWrapper
-                    new SimpleIntegerProperty(cellData.getValue().getColumn(columnIndex).getAsInt()).asObject()
-                    );
+                column.setCellValueFactory(cellData -> {
+                    Integer value = null;
+                    JsonElement element = cellData.getValue().getColumn(columnIndex);
+                    if (element != null && !element.isJsonNull()) {
+                        value = element.getAsInt();
+                    }
+                    return new SimpleObjectProperty<>(value);
+                });
                 this.getColumns().add(column);
             }
             if (Float.class.isAssignableFrom(clazz)) {
                 TableColumn<MyObject, Float> column = new TableColumn<>(headers[i]);
-                column.setCellValueFactory(cellData -> 
-                    // new ReadOnlyIntegerWrapper
-                    new SimpleFloatProperty(cellData.getValue().getColumn(columnIndex).getAsFloat()).asObject()
-                    );
+                column.setCellValueFactory(cellData -> {
+                        Float value = null;
+                        JsonElement element = cellData.getValue().getColumn(columnIndex);
+                        if (element != null && !element.isJsonNull()) {
+                            value = element.getAsFloat();
+                        }
+                        return new SimpleObjectProperty<>(value);
+                });
                 this.getColumns().add(column);
             }
             if (Boolean.class.isAssignableFrom(clazz)) {
                 TableColumn<MyObject, Boolean> column = new TableColumn<>(headers[i]);
-                column.setCellValueFactory(cellData -> 
-                    new ReadOnlyBooleanWrapper(cellData.getValue().getColumn(columnIndex).getAsBoolean())
-                    );
+                column.setCellValueFactory(cellData -> {
+                    Boolean value = null;
+                    JsonElement element = cellData.getValue().getColumn(columnIndex);
+                    if (element != null && !element.isJsonNull()) {
+                        value = element.getAsBoolean();
+                    }
+                    return new SimpleObjectProperty<>(value);
+                });
                 this.getColumns().add(column);
             }
         }
@@ -354,21 +377,32 @@ class TableViewJson extends TableView<MyObject> {
 
 class MyObject {
     private final JsonObject obj;
+    private String toString;
 
     public MyObject(JsonObject obj) {
         this.obj = obj;
     }
 
-    public JsonPrimitive getColumn(int index) {
+    public JsonElement getColumn(int index) {
         var iter = obj.entrySet().iterator();
         // JsonPrimitive value = null;
         for (int i = 0; i < index; i++) {
             iter.next();
         }
-        return iter.next().getValue().getAsJsonPrimitive();
+        var val = iter.next().getValue();
+        return val;
+        /* if (val.isJsonPrimitive()) {
+            return val.getAsJsonPrimitive();
+        } else {
+            return new JsonPrimitive(val.toString());
+        } */
+        
     }
 
     public String toString() {
-        return obj.toString();
+        if (toString == null) { 
+            toString = obj.toString();
+        }
+        return toString;
     }
 }
