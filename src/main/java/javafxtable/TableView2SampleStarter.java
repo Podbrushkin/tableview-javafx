@@ -85,10 +85,9 @@ import org.controlsfx.control.tableview2.cell.TextField2TableCell;
  *
  * Build the UI and launch the Application
  */
-public class Start extends Application {
-// public class Start {
+public class TableView2SampleStarter extends Application {
 
-    private final ObservableList<Person> data = generateData(1000000);
+    private final ObservableList<Person> data = generateData(100000);
     private TableView2Sample table;
 
     private StackPane centerPane;
@@ -103,7 +102,7 @@ public class Start extends Application {
         primaryStage.setScene(scene);
         primaryStage.show();
         // root.setCenter(new TableView2Sample());
-        root.setCenter(new Start().getPanel(primaryStage));
+        root.setCenter(new TableView2SampleStarter().getPanel(primaryStage));
     }
 
     
