@@ -281,6 +281,11 @@ class TableViewJson extends TableView<MyObject> {
                 }
 
             }
+            if (referenceDataObj == null) {
+                System.out.println("No values in property "+headers[columnIndex]+
+                    ", there will be no column for this property.");
+                continue;
+            }
 
             Class clazz = getType(referenceDataObj.getColumn(columnIndex).getAsJsonPrimitive());
             
