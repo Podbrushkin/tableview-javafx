@@ -10,7 +10,6 @@
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <!-- <exec.mainClass>org.controlsfx.ControlsFXSampler</exec.mainClass> -->
         <exec.mainClass>javafxtable.JsonTableViewer</exec.mainClass>
     </properties>
 
@@ -20,17 +19,7 @@
             <artifactId>javafx-controls</artifactId>
             <version>23.0.1</version>
         </dependency>
-        <!-- <dependency>
-            <groupId>org.openjfx</groupId>
-            <artifactId>javafx-web</artifactId>
-            <version>17.0.13</version>
-        </dependency> -->
-
-        <!-- <dependency>
-            <groupId>org.controlsfx</groupId>
-            <artifactId>controlsfx</artifactId>
-            <version>11.2.1</version>
-        </dependency> -->
+        
         <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>

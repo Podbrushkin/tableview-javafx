@@ -23,6 +23,7 @@ import javafx.beans.property.SimpleObjectProperty;
 import javafx.collections.transformation.FilteredList;
 import javafx.collections.transformation.SortedList;
 import javafx.geometry.Insets;
+import javafx.scene.Cursor;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -182,11 +183,6 @@ public class JsonTableViewer extends Application {
         var policyLabel = new Label("Resize Policy:");
         var cb = new ChoiceBox<String>();
         cb.setPrefWidth(160);
-        // cb.setPrefWidth(grid.getCellBounds(0, 0).getWidth());
-        
-        // var firstColumnConstraints = grid.getColumnConstraints().get(0);
-        // cb.prefWidthProperty().bind(firstColumnConstraints.prefWidthProperty());
-        
         cb.getItems().addAll(resizePoliciesNames);
         cb.setOnAction(ea -> {
             int choice = cb.getSelectionModel().getSelectedIndex();
@@ -349,7 +345,7 @@ class TableViewJson extends TableView<MyObject> {
     public TableViewJson(JsonArray data) {
         this.data = data;
         this.setTableMenuButtonVisible(true);
-        this.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        // this.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         createColumns();
         fillData(data);
     }
@@ -389,26 +385,30 @@ class TableViewJson extends TableView<MyObject> {
                     }
                     return new SimpleObjectProperty<>(value);
                 });
-
-                boolean isLink = referenceDataObj.getColumn(columnIndex).getAsString().startsWith("http");
-                if (isLink) {
-                    // final Application = this;
-                    column.setCellFactory(tc -> {
-                        var cell = new TableCell<MyObject, String>();
-                        var hl = new Hyperlink();
-                        cell.setGraphic(hl);
-                        cell.setPrefHeight(Control.USE_COMPUTED_SIZE);
-                        // TODO: How to prevent "null" being shown when there is no link?
-                        hl.textProperty().bind(cell.itemProperty().asString());
-                        // hl.setText(cell.itemProperty().asString().get());
-                        hl.setOnAction((ae) -> {
-                            // TODO: How to get parent Application?
-                            JsonTableViewer.hostServices.showDocument(hl.textProperty().get());
-                        });
-                        return cell;
-                    });
-                }
-                
+                column.setCellFactory(tc -> {
+                    TableCell<MyObject, String> cell = new TableCell<MyObject, String>() {
+                        boolean isLink(String item, boolean empty) {
+                            return !empty && item != null && getText() != null && item.matches("^https?://.*");
+                        }
+                        @Override
+                        protected void updateItem(String item, boolean empty) {
+                            super.updateItem(item, empty);
+                            setText(empty ? null : item);
+                            // System.out.printf("getText()=%s item=%s%n",getText(),item);
+                            setOnMouseClicked(e -> {
+                                if (isLink(item, empty)) {
+                                    JsonTableViewer.hostServices.showDocument(item);
+                                }
+                            });
+                            setOnMouseEntered(e -> {
+                                if (isLink(item, empty)) {
+                                    setCursor(Cursor.HAND);
+                                }
+                            });
+                        }
+                    };
+                    return cell;
+                });
                 /* // this makes word wrap but how do you toggle it?
                 column.setCellFactory(tc -> {
                     var cell = new TableCell<MyObject, String>();
