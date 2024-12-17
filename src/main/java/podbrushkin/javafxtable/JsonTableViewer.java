@@ -1,4 +1,4 @@
-package javafxtable;
+package podbrushkin.javafxtable;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -7,61 +7,62 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.StringJoiner;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
 
 import javafx.application.Application;
 import javafx.application.HostServices;
+import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.binding.StringBinding;
-import javafx.beans.property.SimpleObjectProperty;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import javafx.collections.transformation.FilteredList;
 import javafx.collections.transformation.SortedList;
+import javafx.event.ActionEvent;
 import javafx.geometry.Insets;
-import javafx.scene.Cursor;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ChoiceBox;
-import javafx.scene.control.Control;
-import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
-import javafx.scene.control.RadioButton;
+import javafx.scene.control.SelectionMode;
 import javafx.scene.control.Slider;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
-import javafx.scene.control.TableCell;
-import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.scene.control.TableView.ResizeFeatures;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TitledPane;
-import javafx.scene.control.ToggleGroup;
-import javafx.scene.control.TableView.ResizeFeatures;
 import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.text.Font;
 import javafx.stage.Stage;
 import javafx.util.Callback;
+import javafx.util.StringConverter;
 
 public class JsonTableViewer extends Application {
-    static HostServices hostServices;
+    // static HostServices hostServices;
     
     @Override
     public void start(Stage primaryStage) {
-        hostServices = getHostServices();
+        // hostServices = getHostServices();
+        boolean passThru = getParameters().getRaw().contains("--PassThru");
         primaryStage.setTitle("JSON Table Viewer");
         JsonElement dataEl = getData();
         Parent root = null;
         if (dataEl.isJsonArray()) {
-            root = getTableNode(dataEl.getAsJsonArray());
+            root = getTableNode(dataEl.getAsJsonArray(),passThru);
         } else if (dataEl.isJsonObject()) {
             var tabPane = new TabPane();
             var objectWithArrays = dataEl.getAsJsonObject();
@@ -69,7 +70,7 @@ public class JsonTableViewer extends Application {
                 if (entry.getValue().isJsonArray()) {
                     String tableName = entry.getKey();
                     JsonArray data = entry.getValue().getAsJsonArray();
-                    var tab = new Tab(tableName, getTableNode(data));
+                    var tab = new Tab(tableName, getTableNode(data, passThru));
                     tabPane.getTabs().add(tab);
                 }
             }
@@ -85,9 +86,40 @@ public class JsonTableViewer extends Application {
     }
 
     private BorderPane getTableNode(JsonArray data) {
-        TableViewJson tableView = new TableViewJson(data);
+        return getTableNode(data, false);
+    }
+    private BorderPane getTableNode(JsonArray data, boolean passThru) {
+        TableViewJson tableView = new TableViewJson(data,getHostServices());
+        var zp = buildZoomingPane(tableView);
+        tableView.setTableMenuButtonVisible(true);
+        tableView.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_SUBSEQUENT_COLUMNS);
+
+        // final Pane spacer = new Pane();
+        // HBox.setHgrow(spacer, Priority.ALWAYS);
+        var sf = buildSearchField(tableView);
+        HBox.setHgrow(sf, Priority.ALWAYS);
+        Node topRow = sf;
+        if (passThru) {
+            tableView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+            var submitButton = new Button("Submit");
+            submitButton.setStyle(String.format("-fx-base: green;"));
+            submitButton.setOnAction(ea -> {
+                tableView.getSelectionModel().getSelectedItems().forEach(System.out::println);
+                Platform.exit();
+            });
+            topRow = new HBox(sf,submitButton);
+        }
+
         BorderPane root = new BorderPane();
-        var zp = new ZoomingPane(tableView);
+        root.setCenter(zp);
+        // root.setTop(getSearchField(tableView));
+        root.setTop(topRow);
+        root.setBottom(buildCommonControl(tableView));
+        return root;
+    }
+
+    public static ZoomingPane buildZoomingPane(TableView<MyObject> tableView) {
+        ZoomingPane zp = new ZoomingPane(tableView);
         tableView.addEventFilter(ScrollEvent.SCROLL, e -> {
             if (e.isControlDown()) {
                 Double ov = zp.getZoomFactor();
@@ -101,13 +133,10 @@ public class JsonTableViewer extends Application {
                 e.consume();
             }
         });
-        root.setCenter(zp);
-        root.setTop(getSearchField(tableView));
-        root.setBottom(buildCommonControl(tableView));
-        return root;
+        return zp;
     }
 
-    private Node getSearchField(TableView<MyObject> tableView) {
+    public static Node buildSearchField(TableView<MyObject> tableView) {
         var filteredList = new FilteredList<>(tableView.getItems());
         SortedList<MyObject> sortableData = new SortedList<>(filteredList);
         tableView.setItems(sortableData);
@@ -120,12 +149,40 @@ public class JsonTableViewer extends Application {
                 return obj.toString().toLowerCase().contains(newVal.toLowerCase());
             });
         });
-        return tf;
+        var clearButton = new Button("✕");
+        clearButton.setFont(new Font(8));
+        clearButton.setVisible(false);
+        clearButton.setOnAction((ActionEvent actionEvent) -> {
+            tf.setText("");
+            // tf.requestFocus();
+        });
+        final ChangeListener<String> textListener =
+            (ObservableValue<? extends String> observable,
+             String oldValue, String newValue) -> {
+                clearButton.setVisible(tf.getText().length() != 0);
+            };
+        tf.textProperty().addListener(textListener);
+        // var hb = new HBox(tf,clearButton);
+        // hb.setPrefSize(Control.USE_PREF_SIZE, Control.USE_PREF_SIZE);
+        // HBox.setHgrow(tf,Priority.ALWAYS);
+        HBox region = new HBox() {
+            @Override
+            protected void layoutChildren() {
+                getChildren().get(0).resize(getWidth(), getHeight());
+                // System.out.printf("%s %s%n",getWidth(), getHeight());
+                double side = getHeight()*0.8;
+                double offset = getHeight()/2-side/2;
+                getChildren().get(1).resizeRelocate(getWidth() - side - offset, offset, side, side);
+                // getChildren().get(1).relocate(getWidth() - 18, 0);
+            }
+        };
+        region.getChildren().addAll(tf,clearButton);
+        return region;
     }
 
     
 
-    private Node buildCommonControl(TableView<MyObject> tableView) {
+    public static Node buildCommonControl(TableView<MyObject> tableView) {
         final GridPane grid = new GridPane();
         grid.setHgap(5);
         grid.setVgap(10);
@@ -181,14 +238,37 @@ public class JsonTableViewer extends Application {
         grid.add(radioButtons, 0, row++); */
 
         var policyLabel = new Label("Resize Policy:");
-        var cb = new ChoiceBox<String>();
+        var cb = new ChoiceBox<Callback<TableView.ResizeFeatures, Boolean>>();
+        // var cb = new ChoiceBox<String>();
         cb.setPrefWidth(160);
-        cb.getItems().addAll(resizePoliciesNames);
+        cb.getItems().addAll(resizePolicies);
+        cb.setConverter(
+            new StringConverter<>() {
+                @Override
+                public String toString(Callback<TableView.ResizeFeatures,Boolean> resizePolicy) {
+                    int i = resizePolicies.indexOf(resizePolicy);
+                    return resizePoliciesNames[i];
+                }
+                @Override
+                public Callback<TableView.ResizeFeatures,Boolean> fromString(String string) {
+                    int i = List.of(resizePoliciesNames).indexOf(string);
+                    return resizePolicies.get(i);
+                }
+            }
+        );
+        // new javafx.util.converter.
+        /* Bindings.createObjectBinding(() -> {
+
+        }, tableView.columnResizePolicyProperty()); */
+        // cb.valueProperty().bindBidirectional(Bindings.createObjectBinding(null, null));
+        cb.valueProperty().bindBidirectional(tableView.columnResizePolicyProperty());
+        /* cb.getItems().addAll(resizePoliciesNames);
         cb.setOnAction(ea -> {
             int choice = cb.getSelectionModel().getSelectedIndex();
             tableView.setColumnResizePolicy(resizePolicies.get(choice));
         });
-        cb.getSelectionModel().selectFirst();
+        cb.getSelectionModel().selectFirst(); */
+        
         grid.add(policyLabel, 0, row++);
         grid.add(cb, 0, row++);
     
@@ -279,14 +359,13 @@ public class JsonTableViewer extends Application {
 
     private static String getSampleData() {
         return """
-        [{"lang_id":1,"lang_name":"Afrikaans","lang_code":"afr","latin_script":null},{"lang_id":11,"lang_name":"Albanian","lang_code":"alb","latin_script":null},{"lang_id":20,"lang_name":"Ancient Greek","lang_code":"grc","latin_script":false},{"lang_id":4,"lang_name":"Arabic","lang_code":"ara","latin_script":false},{"lang_id":5,"lang_name":"Armenian","lang_code":"arm","latin_script":false},{"lang_id":6,"lang_name":"Azerbaijani","lang_code":"aze","latin_script":null},{"lang_id":7,"lang_name":"Basque","lang_code":"baq","latin_script":null},{"lang_id":8,"lang_name":"Belarusian","lang_code":"bel","latin_script":false},{"lang_id":null,"lang_name":"Bengali","lang_code":"ben","latin_script":false},{"lang_id":10,"lang_name":null,"lang_code":"bul","latin_script":false}]
+        [{"el":null,"elLabel":"Charles III","born":"1948-11-14","died":null,"links":163,"yearsLived":null},{"el":null,"elLabel":"Nicholas II of Russia","born":"1868-05-18","died":"1918-07-17","links":128,"yearsLived":50.1945205479452},{"el":"http://www.wikidata.org/entity/Q80976","elLabel":"Prince Philip, Duke of Edinburgh","born":"1921-06-10","died":"2021-04-09","links":125,"yearsLived":99.8986301369863},{"el":null,"elLabel":"Felipe VI of Spain","born":"1968-01-30","died":null,"links":113,"yearsLived":null},{"el":"http://www.wikidata.org/entity/Q102139","elLabel":"Margrethe II of Denmark","born":"1940-04-16","died":null,"links":112,"yearsLived":null},{"el":"http://www.wikidata.org/entity/Q36812","elLabel":"William, Prince of Wales","born":"1982-06-21","died":null,"links":110,"yearsLived":null},{"el":"http://www.wikidata.org/entity/Q83171","elLabel":"Alexander II of Russia","born":"1818-04-29","died":"1881-03-13","links":102,"yearsLived":62.915068493150685},{"el":null,"elLabel":"Nicholas I of Russia","born":"1796-07-06","died":"1855-03-02","links":102,"yearsLived":58.69041095890411},{"el":"http://www.wikidata.org/entity/Q120180","elLabel":"Alexander III of Russia","born":"1845-03-10","died":"1894-11-01","links":96,"yearsLived":49.679452054794524},{"el":"http://www.wikidata.org/entity/Q152316","elLabel":"Prince Harry, Duke of Sussex","born":"1984-09-15","died":null,"links":93,"yearsLived":null}]
         """;
     }
     private static String readFromStdin() throws IOException {
-        System.out.print("Reading input... ");
+        // System.out.print("Reading input... ");
         var sj = new StringJoiner(System.lineSeparator());
         try (var br = new BufferedReader(new InputStreamReader(System.in))) {
-            // StringBuilder sb = new StringBuilder();
             String line;
             while ((line = br.readLine()) != null) {
                 sj.add(line);
@@ -295,7 +374,7 @@ public class JsonTableViewer extends Application {
             e.printStackTrace();
         } */
 
-        System.out.println(" Done.");
+        // System.out.println(" Done.");
         return sj.toString();
     }
 
@@ -317,10 +396,10 @@ public class JsonTableViewer extends Application {
                 dataJson = Files.readString(Path.of(params.get(0)), Charset.forName("UTF-8"));
             } 
             else if (params.size() > 1) {
-                // var jsonArray = new JsonArray();
                 var gsonObj = new JsonObject();
                 int i = 0;
-                for (var filePath : params) {
+                for (String filePath : params) {
+                    if (filePath.startsWith("-")) {continue;}
                     String arrJsonStr = Files.readString(Path.of(params.get(i++)), Charset.forName("UTF-8"));
                     JsonArray arrGson = new Gson().fromJson(arrJsonStr, JsonArray.class);
                     String filename = filePath.replaceAll("^.*[\\\\/]", "");
@@ -337,186 +416,5 @@ public class JsonTableViewer extends Application {
 
     public static void main(String[] args) {
         launch(args);
-    }
-}
-
-class TableViewJson extends TableView<MyObject> {
-    private JsonArray data = null;
-    public TableViewJson(JsonArray data) {
-        this.data = data;
-        this.setTableMenuButtonVisible(true);
-        // this.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-        createColumns();
-        fillData(data);
-    }
-
-    private void createColumns() {
-        var referenceJsonObj = data.get(0).getAsJsonObject();
-        String[] headers = referenceJsonObj.keySet().toArray(new String[0]);
-
-        for (int i = 0; i < headers.length; i++) {
-            final int columnIndex = i; // Final variable for use in lambda
-            
-            // find an object where value for this column is not null
-            MyObject referenceDataObj = null;
-            for (int j = 0; j < data.size(); j++) {
-                MyObject tmpDataObj = new MyObject(data.get(j).getAsJsonObject());
-                if (tmpDataObj.getColumn(columnIndex).isJsonPrimitive()) {
-                    referenceDataObj = tmpDataObj;
-                    break;
-                }
-
-            }
-            if (referenceDataObj == null) {
-                System.out.println("No values in property "+headers[columnIndex]+
-                    ", there will be no column for this property.");
-                continue;
-            }
-
-            Class clazz = getType(referenceDataObj.getColumn(columnIndex).getAsJsonPrimitive());
-            
-            if (String.class.isAssignableFrom(clazz)) {
-                TableColumn<MyObject, String> column = new TableColumn<>(headers[i]);
-                column.setCellValueFactory(cellData -> {
-                    String value = null;
-                    JsonElement element = cellData.getValue().getColumn(columnIndex);
-                    if (element != null && !element.isJsonNull()) {
-                        value = element.getAsString();
-                    }
-                    return new SimpleObjectProperty<>(value);
-                });
-                column.setCellFactory(tc -> {
-                    TableCell<MyObject, String> cell = new TableCell<MyObject, String>() {
-                        boolean isLink(String item, boolean empty) {
-                            return !empty && item != null && getText() != null && item.matches("^https?://.*");
-                        }
-                        @Override
-                        protected void updateItem(String item, boolean empty) {
-                            super.updateItem(item, empty);
-                            setText(empty ? null : item);
-                            // System.out.printf("getText()=%s item=%s%n",getText(),item);
-                            setOnMouseClicked(e -> {
-                                if (isLink(item, empty)) {
-                                    JsonTableViewer.hostServices.showDocument(item);
-                                }
-                            });
-                            setOnMouseEntered(e -> {
-                                if (isLink(item, empty)) {
-                                    setCursor(Cursor.HAND);
-                                }
-                            });
-                        }
-                    };
-                    return cell;
-                });
-                /* // this makes word wrap but how do you toggle it?
-                column.setCellFactory(tc -> {
-                    var cell = new TableCell<MyObject, String>();
-                    Text text = new Text();
-                    cell.setGraphic(text);
-                    cell.setPrefHeight(Control.USE_COMPUTED_SIZE);
-                    text.wrappingWidthProperty().bind(column.widthProperty());
-                    text.textProperty().bind(cell.itemProperty().asString());
-                    return cell;
-                }); */
-                this.getColumns().add(column);
-            }
-            if (Integer.class.isAssignableFrom(clazz)) {
-                TableColumn<MyObject, Integer> column = new TableColumn<>(headers[i]);
-                column.setCellValueFactory(cellData -> {
-                    Integer value = null;
-                    JsonElement element = cellData.getValue().getColumn(columnIndex);
-                    if (element != null && !element.isJsonNull()) {
-                        value = element.getAsInt();
-                    }
-                    return new SimpleObjectProperty<>(value);
-                });
-                this.getColumns().add(column);
-            }
-            if (Float.class.isAssignableFrom(clazz)) {
-                TableColumn<MyObject, Float> column = new TableColumn<>(headers[i]);
-                column.setCellValueFactory(cellData -> {
-                        Float value = null;
-                        JsonElement element = cellData.getValue().getColumn(columnIndex);
-                        if (element != null && !element.isJsonNull()) {
-                            value = element.getAsFloat();
-                        }
-                        return new SimpleObjectProperty<>(value);
-                });
-                this.getColumns().add(column);
-            }
-            if (Boolean.class.isAssignableFrom(clazz)) {
-                TableColumn<MyObject, Boolean> column = new TableColumn<>(headers[i]);
-                column.setCellValueFactory(cellData -> {
-                    Boolean value = null;
-                    JsonElement element = cellData.getValue().getColumn(columnIndex);
-                    if (element != null && !element.isJsonNull()) {
-                        value = element.getAsBoolean();
-                    }
-                    return new SimpleObjectProperty<>(value);
-                });
-                this.getColumns().add(column);
-            }
-        }
-    }
-    private void fillData(JsonArray data) {
-        for (int i = 0; i < data.size(); i++) {
-            // Object[] rowValues = jsonObjectToValuesArray();
-            MyObject row = new MyObject(data.get(i).getAsJsonObject());
-            this.getItems().add(row);
-        }
-    }
-
-    private Class getType(JsonPrimitive prim) {
-        Class clazz = null;
-        // var prim = e.getValue().getAsJsonPrimitive();
-        if (prim.isString()) { 
-            clazz = String.class;
-        } 
-        else if (prim.isNumber()) {
-            String num = prim.getAsString();
-            boolean isFloat = num.matches("[-+]?[0-9]*\\.[0-9]+");
-            if (isFloat) {
-                clazz = Float.class;
-            } else {
-                clazz = Integer.class;
-            }
-        }
-        else if (prim.isBoolean()) {
-            clazz = Boolean.class;
-        }
-        return clazz;
-    }
-}
-
-class MyObject {
-    private final JsonObject obj;
-    private String toString;
-
-    public MyObject(JsonObject obj) {
-        this.obj = obj;
-    }
-
-    public JsonElement getColumn(int index) {
-        var iter = obj.entrySet().iterator();
-        // JsonPrimitive value = null;
-        for (int i = 0; i < index; i++) {
-            iter.next();
-        }
-        var val = iter.next().getValue();
-        return val;
-        /* if (val.isJsonPrimitive()) {
-            return val.getAsJsonPrimitive();
-        } else {
-            return new JsonPrimitive(val.toString());
-        } */
-        
-    }
-
-    public String toString() {
-        if (toString == null) { 
-            toString = obj.toString();
-        }
-        return toString;
     }
 }

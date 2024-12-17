@@ -1,4 +1,4 @@
-package javafxtable;
+package podbrushkin.javafxtable;
 
 public class JsonTableViewerLauncher {
 	public static void main(String[] args) {

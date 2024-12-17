@@ -1,4 +1,4 @@
-package javafxtable;
+package podbrushkin.javafxtable;
 
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.SimpleDoubleProperty;
