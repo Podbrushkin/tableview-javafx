@@ -15,8 +15,10 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
+import javafx.animation.KeyFrame;
+import javafx.animation.KeyValue;
+import javafx.animation.Timeline;
 import javafx.application.Application;
-import javafx.application.HostServices;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.binding.StringBinding;
@@ -33,6 +35,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.SelectionMode;
 import javafx.scene.control.Slider;
 import javafx.scene.control.Tab;
@@ -40,7 +43,7 @@ import javafx.scene.control.TabPane;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TableView.ResizeFeatures;
 import javafx.scene.control.TextField;
-import javafx.scene.control.TitledPane;
+import javafx.scene.control.ToggleButton;
 import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
@@ -49,6 +52,7 @@ import javafx.scene.layout.Priority;
 import javafx.scene.text.Font;
 import javafx.stage.Stage;
 import javafx.util.Callback;
+import javafx.util.Duration;
 import javafx.util.StringConverter;
 
 public class JsonTableViewer extends Application {
@@ -98,7 +102,7 @@ public class JsonTableViewer extends Application {
         // HBox.setHgrow(spacer, Priority.ALWAYS);
         var sf = buildSearchField(tableView);
         HBox.setHgrow(sf, Priority.ALWAYS);
-        Node topRow = sf;
+        HBox topRow = new HBox(sf);
         if (passThru) {
             tableView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
             var submitButton = new Button("Submit");
@@ -107,14 +111,44 @@ public class JsonTableViewer extends Application {
                 tableView.getSelectionModel().getSelectedItems().forEach(System.out::println);
                 Platform.exit();
             });
-            topRow = new HBox(sf,submitButton);
+            topRow.getChildren().add(submitButton);
         }
-
         BorderPane root = new BorderPane();
+        var controlPanel = buildCommonControl(tableView);
+        
+        var scrollPane = new ScrollPane(controlPanel);
+        
+        root.setBottom(scrollPane);
+        scrollPane.setMinHeight(0);
+        scrollPane.prefHeightProperty().set(0);
+        
+        var settingsButton = new ToggleButton("⚙"); // \u2699 = ⚙️
+        
+        settingsButton.setOnAction(e -> {
+            double contentHeight = scrollPane.getContent().prefHeight(-1)+5;
+            double parentHeightRel = root.getHeight();
+            double expandedHeight = Math.min(contentHeight,parentHeightRel/2);
+
+            double target = scrollPane.getHeight() <= 0 ? expandedHeight : 0 ;
+            if (target != 0) {
+                scrollPane.setVisible(true);
+            }
+            KeyValue keyValue = new KeyValue(scrollPane.prefHeightProperty(), target);
+            Timeline timeline = new Timeline(new KeyFrame(Duration.millis(500), keyValue));
+            timeline.play();
+            if (target == 0) {
+                timeline.setOnFinished(ae -> {
+                    scrollPane.setVisible(false);
+                });
+            }
+        });
+        topRow.getChildren().add(settingsButton);
+
+        
         root.setCenter(zp);
         // root.setTop(getSearchField(tableView));
         root.setTop(topRow);
-        root.setBottom(buildCommonControl(tableView));
+        // root.setBottom();
         return root;
     }
 
@@ -162,9 +196,7 @@ public class JsonTableViewer extends Application {
                 clearButton.setVisible(tf.getText().length() != 0);
             };
         tf.textProperty().addListener(textListener);
-        // var hb = new HBox(tf,clearButton);
-        // hb.setPrefSize(Control.USE_PREF_SIZE, Control.USE_PREF_SIZE);
-        // HBox.setHgrow(tf,Priority.ALWAYS);
+        
         HBox region = new HBox() {
             @Override
             protected void layoutChildren() {
@@ -189,15 +221,6 @@ public class JsonTableViewer extends Application {
         grid.setPadding(new Insets(5, 5, 5, 5));
         int row = 0;
 
-        /* CheckBox constrainedColumnPolicy = new CheckBox("Constrained Column Policy");
-        constrainedColumnPolicy.setSelected(tableView.getColumnResizePolicy().equals(TableView.CONSTRAINED_RESIZE_POLICY));
-        // Bindings.when(constrainedColumnPolicy.selectedProperty()).then(TableView.CONSTRAINED_RESIZE_POLICY).otherwise(TableView.UNCONSTRAINED_RESIZE_POLICY).bind(tableView.columnResizePolicyProperty());
-        tableView.columnResizePolicyProperty().bind(Bindings.when(constrainedColumnPolicy.selectedProperty()).then(TableView.CONSTRAINED_RESIZE_POLICY).otherwise(TableView.UNCONSTRAINED_RESIZE_POLICY));
-        // constrainedColumnPolicy.selectedProperty().bind(null);
-        grid.add(constrainedColumnPolicy, 0, row++); */
-
-        
-
         var resizePolicies = new ArrayList<Callback<ResizeFeatures, Boolean>>();
         resizePolicies.add(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
         resizePolicies.add(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
@@ -218,24 +241,6 @@ public class JsonTableViewer extends Application {
             "UNCONSTRAINED_RESIZE_POLICY"
         };
 
-        /* // var radioButtons = new ArrayList<RadioButton>();
-        ToggleGroup tg = new ToggleGroup();
-        var radioButtons = new HBox();
-        radioButtons.setSpacing(5);
-        int i = 0;
-        for (var rp : resizePolicies) {
-            RadioButton rb = new RadioButton();
-            rb.setToggleGroup(tg);
-            final int iDup = i++;
-            rb.setOnAction(ea -> {
-                tableView.setColumnResizePolicy(rp); 
-                policyLabel.setText(resizePoliciesNames[iDup]);
-            });
-            // radioButtons.add(rb);
-            radioButtons.getChildren().add(rb);
-        }
-        
-        grid.add(radioButtons, 0, row++); */
 
         var policyLabel = new Label("Resize Policy:");
         var cb = new ChoiceBox<Callback<TableView.ResizeFeatures, Boolean>>();
@@ -256,29 +261,13 @@ public class JsonTableViewer extends Application {
                 }
             }
         );
-        // new javafx.util.converter.
-        /* Bindings.createObjectBinding(() -> {
-
-        }, tableView.columnResizePolicyProperty()); */
-        // cb.valueProperty().bindBidirectional(Bindings.createObjectBinding(null, null));
+        
         cb.valueProperty().bindBidirectional(tableView.columnResizePolicyProperty());
-        /* cb.getItems().addAll(resizePoliciesNames);
-        cb.setOnAction(ea -> {
-            int choice = cb.getSelectionModel().getSelectedIndex();
-            tableView.setColumnResizePolicy(resizePolicies.get(choice));
-        });
-        cb.getSelectionModel().selectFirst(); */
+        
         
         grid.add(policyLabel, 0, row++);
         grid.add(cb, 0, row++);
     
-
-        /* RadioButton rb1 = new RadioButton("CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS");
-        rb1.setToggleGroup(tg);
-        rb1.setOnAction(ea -> {
-            tableView.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
-        }); */
-
         var parent = tableView.getParent();
         if (parent != null && parent instanceof ZoomingPane) {
             ZoomingPane zoomingPane = (ZoomingPane)parent;
@@ -310,7 +299,6 @@ public class JsonTableViewer extends Application {
             fixedCellSize.selectedProperty().bind(Bindings.greaterThan(tableView.fixedCellSizeProperty(),0));
             double defaultCellHeight = 25;
             Slider sliderCellSize = new Slider(0,100,defaultCellHeight);
-            // sliderCellSize.disableProperty().bind(fixedCellSize.selectedProperty().not());
 
             tableView.fixedCellSizeProperty().bindBidirectional(sliderCellSize.valueProperty());
 
@@ -334,17 +322,13 @@ public class JsonTableViewer extends Application {
             grid.add(resetCellSize, 1, row-1);
         }
         
-        /* CheckBox showTableMenuButton = new CheckBox("Show Table Menu Button");
-        showTableMenuButton.selectedProperty().bind(tableView.tableMenuButtonVisibleProperty());
-        grid.add(showTableMenuButton, 0, row++); */
-
-        
-        /* Slider sliderZoom = new Slider(1, 2, 1);
+        /* //TODO: implement zooming in addition to scaling
+        Slider sliderZoom = new Slider(1, 2, 1);
         tableView.scaleZProperty().bindBidirectional(sliderZoom.valueProperty());
         tableView.scaleXProperty().bindBidirectional(sliderZoom.valueProperty());
         tableView.scaleYProperty().bindBidirectional(sliderZoom.valueProperty());
-        grid.add(sliderZoom, 0, row++); */
-        /* Slider sliderX = new Slider(1, 2, 1);
+        grid.add(sliderZoom, 0, row++);
+         Slider sliderX = new Slider(1, 2, 1);
         tableView.scaleZProperty().bindBidirectional(sliderZoom.valueProperty());
         tableView.scaleXProperty().bindBidirectional(sliderZoom.valueProperty());
         tableView.scaleYProperty().bindBidirectional(sliderZoom.valueProperty()); */
@@ -352,9 +336,7 @@ public class JsonTableViewer extends Application {
         /* Slider sliderY = new Slider(0, 100, 0);
         tableView.translateYProperty().bindBidirectional(sliderY.valueProperty());
         grid.add(sliderY, 0, row++); */
-        var tp = new TitledPane("TableView Options", grid);
-        tp.setExpanded(false);
-        return tp;
+        return grid;
     }
 
     private static String getSampleData() {
