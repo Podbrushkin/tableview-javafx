@@ -1,5 +1,8 @@
 package podbrushkin.javafxtable;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -9,20 +12,26 @@ import javafx.application.HostServices;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.event.EventHandler;
 import javafx.scene.Cursor;
+import javafx.scene.Scene;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.effect.Bloom;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.paint.Color;
+import javafx.stage.Stage;
 
 public class TableViewJson extends TableView<MyObject> {
-    private JsonArray data = null;
+    // private JsonArray data = null;
     private HostServices hostServices;
     private EventHandler<? super MouseEvent> onArrayClicked;
 
     public TableViewJson(JsonArray data) {
-        this.data = data;
-        createColumns();
+        // this.data = data;
+        for (var column : buildColumns(data)) {
+            this.getColumns().add(column);
+        }
         fillData(data);
     }
 
@@ -39,10 +48,10 @@ public class TableViewJson extends TableView<MyObject> {
         this.onArrayClicked = onArrayClicked;
     }
 
-    private void createColumns() {
+    private List<TableColumn<MyObject,?>> buildColumns(JsonArray data) {
         var referenceJsonObj = data.get(0).getAsJsonObject();
         String[] headers = referenceJsonObj.keySet().toArray(new String[0]);
-
+        var builtColumns = new ArrayList<TableColumn<MyObject,?>>();
         // for each property find first non-null value and create a column
         for (var columnName : headers) {
             for (int j = 0; j < data.size(); j++) {
@@ -50,13 +59,13 @@ public class TableViewJson extends TableView<MyObject> {
                 JsonElement sampleValue = sampleObj.getColumn(columnName);
 
                 if (sampleValue.isJsonPrimitive()) {
-                    this.getColumns().add(createColumnForJsonPrimitives(columnName, sampleValue));
+                    builtColumns.add(createColumnForJsonPrimitives(columnName, sampleValue));
                     break;
                 } else if (sampleValue.isJsonArray()) {
-                    createColumnForJsonArrays(columnName);
+                    builtColumns.add(createColumnForJsonArrays(columnName));
                     break;
                 } else if (sampleValue.isJsonObject()) {
-                    createColumnForJsonObjects(columnName);
+                    builtColumns.add(createColumnForJsonObjects(columnName));
                     break;
                 }
 
@@ -68,8 +77,8 @@ public class TableViewJson extends TableView<MyObject> {
                     break;
                 }
             }
-
         }
+        return builtColumns;
     }
 
     private TableColumn<MyObject, ?> createColumnForJsonPrimitives(String columnName, JsonElement sampleValue) {
@@ -82,6 +91,8 @@ public class TableViewJson extends TableView<MyObject> {
                 JsonElement element = cellData.getValue().getColumn(columnName);
                 if (element != null && !element.isJsonNull()) {
                     value = element.getAsString();
+                } else {
+                    System.out.printf("there is no '%s' column in %s object. %n",columnName,cellData.getValue());
                 }
                 return new SimpleObjectProperty<>(value);
             });
@@ -163,7 +174,7 @@ public class TableViewJson extends TableView<MyObject> {
         throw new IllegalStateException("What is this column? Not a primitive. "+columnName);
     }
 
-    private void createColumnForJsonArrays(String columnName) {
+    private TableColumn<MyObject, JsonArray> createColumnForJsonArrays(String columnName) {
         TableColumn<MyObject, JsonArray> column = new TableColumn<>(columnName);
         column.setCellValueFactory(cellData -> {
             JsonArray value = null;
@@ -179,7 +190,7 @@ public class TableViewJson extends TableView<MyObject> {
                 protected void updateItem(JsonArray item, boolean empty) {
                     super.updateItem(item, empty);
                     if (item != null) {
-                        String view = String.format("▨ Object[%s]", item.size());
+                        String view = String.format("▨ Array[%s]", item.size());
                         setText(empty ? null : view);
                         setOnMouseClicked(onArrayClicked);
                         setEffect(new Bloom(0.01));
@@ -188,10 +199,10 @@ public class TableViewJson extends TableView<MyObject> {
             };
             return cell;
         });
-        this.getColumns().add(column);
+        return column;
     }
 
-    private void createColumnForJsonObjects(String columnName) {
+    private TableColumn<MyObject, JsonObject> createColumnForJsonObjects(String columnName) {
         TableColumn<MyObject, JsonObject> column = new TableColumn<>(columnName);
         column.setCellValueFactory(cellData -> {
             JsonObject value = null;
@@ -202,22 +213,40 @@ public class TableViewJson extends TableView<MyObject> {
             return new SimpleObjectProperty<>(value);
         });
 
+        // this will create a new window table
+        EventHandler<? super MouseEvent> newWindowTableHandler = e -> {
+            var tableCell = (TableCell<MyObject, JsonArray>)e.getSource();
+            var tableColumn = tableCell.getTableColumn();
+            var columnData = new JsonArray();
+            for (var val : tableCell.getTableView().getItems()) {
+                columnData.add(tableColumn.getCellObservableValue(val).getValue());
+            }
+            displayTable(new TableViewJson(columnData));
+        };
+        EventHandler<? super MouseEvent> newColumnsTableHandler = e -> {
+            var tableCell = (TableCell<MyObject, JsonArray>)e.getSource();
+            var parentTableColumn = tableCell.getTableColumn();
+            var dataForNewColumns = new JsonArray();
+            for (var val : tableCell.getTableView().getItems()) {
+                dataForNewColumns.add(parentTableColumn.getCellObservableValue(val).getValue());
+            }
+            buildColumns(dataForNewColumns).forEach(childColumn -> {
+                parentTableColumn.getColumns().add(childColumn);
+
+            });
+        };
+
         column.setCellFactory(tc -> {
             TableCell<MyObject, JsonObject> cell = new TableCell<MyObject, JsonObject>() {
                 @Override
                 protected void updateItem(JsonObject item, boolean empty) {
                     super.updateItem(item, empty);
                     if (item != null && !empty) {
-                        String view = String.format("Object[%s]", item.entrySet().size());
+                        var propNames = String.join(", ", item.keySet());
+                        String view = String.format("Object[%s]", propNames);
+                        setEffect(new Bloom(0.1));
                         setText(view);
-                        // Set mouse click event to handle interaction
-                        /*
-                         * setOnMouseClicked(event -> {
-                         * setUserData(item); // Store the JsonObject in UserData
-                         * if (onObjectClicked != null) {
-                         * onObjectClicked.handle(event); // Call the registered event handler}
-                         * });
-                         */
+                        setOnMouseClicked(newColumnsTableHandler);
                     } else {
                         setText(null);
                     }
@@ -226,8 +255,19 @@ public class TableViewJson extends TableView<MyObject> {
             return cell;
         });
 
-        this.getColumns().add(column);
+        return column;
     }
+    /* private void createNestedColumns(JsonObject sampleJson) {
+        for (Map.Entry<String, JsonElement> entry : sampleJson.entrySet()) {
+            // Check Primitive Type and Create Columns
+            if (entry.getValue().isJsonPrimitive()) {
+                String jsonKey = entry.getKey();
+                JsonPrimitive sampleValue = entry.getValue().getAsJsonPrimitive();
+                createColumnForJsonPrimitives(jsonKey, sampleValue);
+            }
+            // Ignoring non-primitive types (complex types)
+        }
+    } */
 
     private void fillData(JsonArray data) {
         for (int i = 0; i < data.size(); i++) {
@@ -262,5 +302,16 @@ public class TableViewJson extends TableView<MyObject> {
 
     public void setOnArrayClicked(EventHandler<? super MouseEvent> onArrayClicked) {
         this.onArrayClicked = onArrayClicked;
+    }
+
+    private void displayTable(TableView tableView) {
+        final Stage stage = new Stage();
+            var rootGroup = new BorderPane(tableView);
+            Scene scene = new Scene(rootGroup, 200, 200, Color.WHITESMOKE);
+            stage.setScene(scene);
+            stage.setTitle("New stage");
+            stage.centerOnScreen();
+            stage.show();
+
     }
 }
