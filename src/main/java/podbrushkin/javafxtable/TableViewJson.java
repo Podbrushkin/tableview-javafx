@@ -50,7 +50,7 @@ public class TableViewJson extends TableView<MyObject> {
                 JsonElement sampleValue = sampleObj.getColumn(columnName);
 
                 if (sampleValue.isJsonPrimitive()) {
-                    createColumnForJsonPrimitives(columnName, sampleValue);
+                    this.getColumns().add(createColumnForJsonPrimitives(columnName, sampleValue));
                     break;
                 } else if (sampleValue.isJsonArray()) {
                     createColumnForJsonArrays(columnName);
@@ -72,7 +72,7 @@ public class TableViewJson extends TableView<MyObject> {
         }
     }
 
-    private void createColumnForJsonPrimitives(String columnName, JsonElement sampleValue) {
+    private TableColumn<MyObject, ?> createColumnForJsonPrimitives(String columnName, JsonElement sampleValue) {
         Class clazz = getType(sampleValue.getAsJsonPrimitive());
 
         if (String.class.isAssignableFrom(clazz)) {
@@ -122,7 +122,7 @@ public class TableViewJson extends TableView<MyObject> {
              * return cell;
              * });
              */
-            this.getColumns().add(column);
+            return column;
         }
         if (Integer.class.isAssignableFrom(clazz)) {
             TableColumn<MyObject, Integer> column = new TableColumn<>(columnName);
@@ -134,7 +134,7 @@ public class TableViewJson extends TableView<MyObject> {
                 }
                 return new SimpleObjectProperty<>(value);
             });
-            this.getColumns().add(column);
+            return column;
         }
         if (Float.class.isAssignableFrom(clazz)) {
             TableColumn<MyObject, Float> column = new TableColumn<>(columnName);
@@ -146,7 +146,7 @@ public class TableViewJson extends TableView<MyObject> {
                 }
                 return new SimpleObjectProperty<>(value);
             });
-            this.getColumns().add(column);
+            return column;
         }
         if (Boolean.class.isAssignableFrom(clazz)) {
             TableColumn<MyObject, Boolean> column = new TableColumn<>(columnName);
@@ -158,8 +158,9 @@ public class TableViewJson extends TableView<MyObject> {
                 }
                 return new SimpleObjectProperty<>(value);
             });
-            this.getColumns().add(column);
+            return column;
         }
+        throw new IllegalStateException("What is this column? Not a primitive. "+columnName);
     }
 
     private void createColumnForJsonArrays(String columnName) {
