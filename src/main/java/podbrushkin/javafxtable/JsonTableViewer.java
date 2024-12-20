@@ -40,6 +40,7 @@ import javafx.scene.control.SelectionMode;
 import javafx.scene.control.Slider;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
+import javafx.scene.control.TableCell;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TableView.ResizeFeatures;
 import javafx.scene.control.TextField;
@@ -94,6 +95,12 @@ public class JsonTableViewer extends Application {
     }
     private BorderPane getTableNode(JsonArray data, boolean passThru) {
         TableViewJson tableView = new TableViewJson(data,getHostServices());
+        tableView.setOnArrayClicked(me -> {
+
+            TableCell<MyObject, JsonArray> cell = (TableCell<MyObject, JsonArray>) me.getSource();
+            
+            System.out.println(cell.getItem());
+        });
         var zp = buildZoomingPane(tableView);
         tableView.setTableMenuButtonVisible(true);
         tableView.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_SUBSEQUENT_COLUMNS);
