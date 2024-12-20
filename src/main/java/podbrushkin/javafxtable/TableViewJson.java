@@ -11,6 +11,7 @@ import javafx.scene.Cursor;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.scene.effect.Bloom;
 import javafx.scene.input.MouseEvent;
 
 public class TableViewJson extends TableView<MyObject> {
@@ -48,10 +49,10 @@ public class TableViewJson extends TableView<MyObject> {
                 JsonElement sampleValue = sampleObj.getColumn(columnName);
 
                 if (sampleValue.isJsonPrimitive()) {
-                    createColumnFromJsonPrimitive(columnName, sampleValue);
+                    createColumnForJsonPrimitives(columnName, sampleValue);
                     break;
                 } else if (sampleValue.isJsonArray()) {
-                    createColumnFromJsonArray(columnName);
+                    createColumnForJsonArrays(columnName);
                     break;
                 }
 
@@ -60,13 +61,14 @@ public class TableViewJson extends TableView<MyObject> {
                 } else {
                     System.out.println("There is no non-null values in property " + columnName +
                             ", there will be no column for this property.");
+                    break;
                 }
             }
 
         }
     }
 
-    private void createColumnFromJsonPrimitive(String columnName, JsonElement sampleValue) {
+    private void createColumnForJsonPrimitives(String columnName, JsonElement sampleValue) {
         Class clazz = getType(sampleValue.getAsJsonPrimitive());
 
         if (String.class.isAssignableFrom(clazz)) {
@@ -156,7 +158,7 @@ public class TableViewJson extends TableView<MyObject> {
         }
     }
 
-    private void createColumnFromJsonArray(String columnName) {
+    private void createColumnForJsonArrays(String columnName) {
         TableColumn<MyObject, JsonArray> column = new TableColumn<>(columnName);
         column.setCellValueFactory(cellData -> {
             JsonArray value = null;
@@ -172,9 +174,10 @@ public class TableViewJson extends TableView<MyObject> {
                 protected void updateItem(JsonArray item, boolean empty) {
                     super.updateItem(item, empty);
                     if (item != null) {
-                        String view = String.format("Object[%s]", item.size());
+                        String view = String.format("▨ Object[%s]", item.size());
                         setText(empty ? null : view);
                         setOnMouseClicked(onArrayClicked);
+                        setEffect(new Bloom(0.01));
                     }
                 }
             };

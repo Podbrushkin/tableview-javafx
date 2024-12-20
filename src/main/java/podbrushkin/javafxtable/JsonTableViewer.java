@@ -29,7 +29,6 @@ import javafx.collections.transformation.SortedList;
 import javafx.event.ActionEvent;
 import javafx.geometry.Insets;
 import javafx.scene.Node;
-import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
@@ -58,18 +57,17 @@ import javafx.util.StringConverter;
 
 public class JsonTableViewer extends Application {
     // static HostServices hostServices;
-    
+    private TabPane tabPane = new TabPane();
     @Override
     public void start(Stage primaryStage) {
         // hostServices = getHostServices();
         boolean passThru = getParameters().getRaw().contains("--PassThru");
         primaryStage.setTitle("JSON Table Viewer");
         JsonElement dataEl = getData();
-        Parent root = null;
+        // Parent root = null;
         if (dataEl.isJsonArray()) {
-            root = getTableNode(dataEl.getAsJsonArray(),passThru);
+            tabPane.getTabs().add(new Tab("",getTableNode(dataEl.getAsJsonArray(),passThru)));
         } else if (dataEl.isJsonObject()) {
-            var tabPane = new TabPane();
             var objectWithArrays = dataEl.getAsJsonObject();
             for (var entry : objectWithArrays.entrySet()) {
                 if (entry.getValue().isJsonArray()) {
@@ -79,12 +77,9 @@ public class JsonTableViewer extends Application {
                     tabPane.getTabs().add(tab);
                 }
             }
-            root = tabPane;
         }
         
-        
-        
-        Scene scene = new Scene(root,500,300);
+        Scene scene = new Scene(tabPane,500,300);
         primaryStage.setScene(scene);
         primaryStage.show();
         
@@ -98,8 +93,8 @@ public class JsonTableViewer extends Application {
         tableView.setOnArrayClicked(me -> {
 
             TableCell<MyObject, JsonArray> cell = (TableCell<MyObject, JsonArray>) me.getSource();
-            
-            System.out.println(cell.getItem());
+            JsonArray chosenArray = cell.getItem();
+            tabPane.getTabs().add(new Tab("array", getTableNode(chosenArray)));
         });
         var zp = buildZoomingPane(tableView);
         tableView.setTableMenuButtonVisible(true);
