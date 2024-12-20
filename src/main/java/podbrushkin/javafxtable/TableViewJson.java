@@ -2,6 +2,7 @@ package podbrushkin.javafxtable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -10,11 +11,13 @@ import com.google.gson.JsonPrimitive;
 
 import javafx.application.HostServices;
 import javafx.beans.property.SimpleObjectProperty;
+import javafx.beans.value.ObservableValue;
 import javafx.event.EventHandler;
 import javafx.scene.Cursor;
 import javafx.scene.Scene;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableColumn.CellDataFeatures;
 import javafx.scene.control.TableView;
 import javafx.scene.effect.Bloom;
 import javafx.scene.input.MouseEvent;
@@ -86,16 +89,9 @@ public class TableViewJson extends TableView<MyObject> {
 
         if (String.class.isAssignableFrom(clazz)) {
             TableColumn<MyObject, String> column = new TableColumn<>(columnName);
-            column.setCellValueFactory(cellData -> {
-                String value = null;
-                JsonElement element = cellData.getValue().getColumn(columnName);
-                if (element != null && !element.isJsonNull()) {
-                    value = element.getAsString();
-                } else {
-                    System.out.printf("there is no '%s' column in %s object. %n",columnName,cellData.getValue());
-                }
-                return new SimpleObjectProperty<>(value);
-            });
+            
+            // column.setCellValueFactory(cellData -> stringCellValueFactory(columnName, cellData, Function.identity()));
+            
             column.setCellFactory(tc -> {
                 TableCell<MyObject, String> cell = new TableCell<MyObject, String>() {
                     boolean isLink(String item, boolean empty) {
@@ -174,6 +170,23 @@ public class TableViewJson extends TableView<MyObject> {
         throw new IllegalStateException("What is this column? Not a primitive. "+columnName);
     }
 
+    /* private ObservableValue<String> stringCellValueFactory(
+        String columnName,
+        CellDataFeatures<MyObject, String> cellData, 
+        Function<JsonElement,JsonElement> mapFunc
+        ) {
+
+        String value = null;
+        JsonElement element = cellData.getValue().getColumn(columnName);
+        element = mapFunc.apply(element);
+        if (element != null && !element.isJsonNull()) {
+            value = element.getAsString();
+        } else {
+            System.out.printf("there is no '%s' column in %s object. %n",columnName,cellData.getValue());
+        }
+        return new SimpleObjectProperty<>(value);
+    } */
+
     private TableColumn<MyObject, JsonArray> createColumnForJsonArrays(String columnName) {
         TableColumn<MyObject, JsonArray> column = new TableColumn<>(columnName);
         column.setCellValueFactory(cellData -> {
@@ -230,10 +243,39 @@ public class TableViewJson extends TableView<MyObject> {
             for (var val : tableCell.getTableView().getItems()) {
                 dataForNewColumns.add(parentTableColumn.getCellObservableValue(val).getValue());
             }
-            buildColumns(dataForNewColumns).forEach(childColumn -> {
-                parentTableColumn.getColumns().add(childColumn);
+            for (TableColumn<MyObject, ?> childColumn : buildColumns(dataForNewColumns)) {
+                try {
+                    TableColumn<MyObject, String> strColumn = (TableColumn<MyObject, String>)childColumn;
+                    Function<MyObject,JsonElement> cellObjectFromRowObject = (mo) -> {
+                        System.out.println("from THIS:\t"+mo);
+                        var val = mo.getColumn(parentTableColumn.getText());
+                        System.out.println("we got THIS:\t"+val);
+                        return val;
+                    };
+                    strColumn.setCellValueFactory(new MyStringCallBack(strColumn.getText(), cellObjectFromRowObject));
+                    /* strColumn.setCellValueFactory(cellData0 -> {
+                        stringCellValueFactory(column.getText(), cellData0, Function.identity());
+                    }); */
 
-            });
+                    parentTableColumn.getColumns().add(strColumn);
+                } catch (Exception exc) {
+                    System.out.println("exceptinio! "+exc.getMessage());
+                }
+                /* var miniobj = new MyObject(dataForNewColumns.get(0).getAsJsonObject());
+                var cl = childColumn.getCellObservableValue(miniobj).getClass().getGenericSuperclass();
+                System.out.println( cl); */
+                // if ()
+                // childColumn.get
+                // System.out.println("gotcha:"+childColumn.getCellData(0).getClass());
+                // childColumn.setCellValueFactory(null);
+                // childColumn.setCellValueFactory(cellData -> {});
+
+                // childColumn.setCellValueFactory(cellData -> {
+                //     stringCellValueFactory(column.getText(), cellData, null);
+                // });
+                
+
+            };
         };
 
         column.setCellFactory(tc -> {
