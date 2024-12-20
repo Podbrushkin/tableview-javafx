@@ -108,7 +108,7 @@ public class JsonTableViewer extends Application {
         if (passThru) {
             tableView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
             var submitButton = new Button("Submit");
-            submitButton.setStyle(String.format("-fx-base: green;"));
+            submitButton.setStyle("-fx-base: green;");
             submitButton.setOnAction(ea -> {
                 tableView.getSelectionModel().getSelectedItems().forEach(System.out::println);
                 Platform.exit();

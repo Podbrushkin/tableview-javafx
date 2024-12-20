@@ -2,6 +2,7 @@ package podbrushkin.javafxtable;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 
 import javafx.application.HostServices;
@@ -29,11 +30,11 @@ public class TableViewJson extends TableView<MyObject> {
         this(data);
         this.hostServices = hostServices;
     }
+
     public TableViewJson(
-        JsonArray data, 
-        HostServices hostServices, 
-        EventHandler<? super MouseEvent> onArrayClicked
-        ) {
+            JsonArray data,
+            HostServices hostServices,
+            EventHandler<? super MouseEvent> onArrayClicked) {
         this(data, hostServices);
         this.onArrayClicked = onArrayClicked;
     }
@@ -53,6 +54,9 @@ public class TableViewJson extends TableView<MyObject> {
                     break;
                 } else if (sampleValue.isJsonArray()) {
                     createColumnForJsonArrays(columnName);
+                    break;
+                } else if (sampleValue.isJsonObject()) {
+                    createColumnForJsonObjects(columnName);
                     break;
                 }
 
@@ -186,6 +190,44 @@ public class TableViewJson extends TableView<MyObject> {
         this.getColumns().add(column);
     }
 
+    private void createColumnForJsonObjects(String columnName) {
+        TableColumn<MyObject, JsonObject> column = new TableColumn<>(columnName);
+        column.setCellValueFactory(cellData -> {
+            JsonObject value = null;
+            JsonElement element = cellData.getValue().getColumn(columnName);
+            if (element != null && !element.isJsonNull()) {
+                value = element.getAsJsonObject();
+            }
+            return new SimpleObjectProperty<>(value);
+        });
+
+        column.setCellFactory(tc -> {
+            TableCell<MyObject, JsonObject> cell = new TableCell<MyObject, JsonObject>() {
+                @Override
+                protected void updateItem(JsonObject item, boolean empty) {
+                    super.updateItem(item, empty);
+                    if (item != null && !empty) {
+                        String view = String.format("Object[%s]", item.entrySet().size());
+                        setText(view);
+                        // Set mouse click event to handle interaction
+                        /*
+                         * setOnMouseClicked(event -> {
+                         * setUserData(item); // Store the JsonObject in UserData
+                         * if (onObjectClicked != null) {
+                         * onObjectClicked.handle(event); // Call the registered event handler}
+                         * });
+                         */
+                    } else {
+                        setText(null);
+                    }
+                }
+            };
+            return cell;
+        });
+
+        this.getColumns().add(column);
+    }
+
     private void fillData(JsonArray data) {
         for (int i = 0; i < data.size(); i++) {
             // Object[] rowValues = jsonObjectToValuesArray();
@@ -216,6 +258,7 @@ public class TableViewJson extends TableView<MyObject> {
     public void setHostServices(HostServices hostServices) {
         this.hostServices = hostServices;
     }
+
     public void setOnArrayClicked(EventHandler<? super MouseEvent> onArrayClicked) {
         this.onArrayClicked = onArrayClicked;
     }
