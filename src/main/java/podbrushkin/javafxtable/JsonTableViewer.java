@@ -66,7 +66,7 @@ public class JsonTableViewer extends Application {
         JsonElement dataEl = getData();
         // Parent root = null;
         if (dataEl.isJsonArray()) {
-            tabPane.getTabs().add(new Tab("",getTableNode(dataEl.getAsJsonArray(),passThru)));
+            tabPane.getTabs().add(new Tab("root",getTableNode(dataEl.getAsJsonArray(),passThru)));
         } else if (dataEl.isJsonObject()) {
             var objectWithArrays = dataEl.getAsJsonObject();
             for (var entry : objectWithArrays.entrySet()) {
@@ -95,6 +95,7 @@ public class JsonTableViewer extends Application {
             TableCell<MyObject, JsonArray> cell = (TableCell<MyObject, JsonArray>) me.getSource();
             JsonArray chosenArray = cell.getItem();
             tabPane.getTabs().add(new Tab("array", getTableNode(chosenArray)));
+            tabPane.getSelectionModel().selectLast();
         });
         var zp = buildZoomingPane(tableView);
         tableView.setTableMenuButtonVisible(true);
