@@ -2,6 +2,7 @@ package podbrushkin.javafxtable;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
@@ -9,6 +10,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.StringJoiner;
+import java.util.stream.Collectors;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
@@ -56,7 +58,6 @@ import javafx.util.Duration;
 import javafx.util.StringConverter;
 
 public class JsonTableViewer extends Application {
-    // static HostServices hostServices;
     private TabPane tabPane = new TabPane();
     @Override
     public void start(Stage primaryStage) {
@@ -137,7 +138,7 @@ public class JsonTableViewer extends Application {
                 scrollPane.setVisible(true);
             }
             KeyValue keyValue = new KeyValue(scrollPane.prefHeightProperty(), target);
-            Timeline timeline = new Timeline(new KeyFrame(Duration.millis(500), keyValue));
+            Timeline timeline = new Timeline(new KeyFrame(Duration.millis(300), keyValue));
             timeline.play();
             if (target == 0) {
                 timeline.setOnFinished(ae -> {
@@ -183,6 +184,7 @@ public class JsonTableViewer extends Application {
         tf.setPromptText(String.format("Search across %s rows...",sortableData.size()));
         tf.textProperty().addListener((obsVal,oldVal,newVal) -> {
             filteredList.setPredicate((obj) -> {
+                tableView.refresh();    // prevents dead cells issue with nested columns
                 return obj.toString().toLowerCase().contains(newVal.toLowerCase());
             });
         });
@@ -343,8 +345,12 @@ public class JsonTableViewer extends Application {
     }
 
     private static String getSampleData() {
+        try (InputStream in = JsonTableViewer.class.getResourceAsStream("/sample.json");
+            BufferedReader reader = new BufferedReader(new InputStreamReader(in))) {
+            return reader.lines().collect(Collectors.joining(System.lineSeparator()));
+        } catch (Exception e) {e.printStackTrace();}
         return """
-        [{"el":null,"elLabel":"Charles III","born":"1948-11-14","died":null,"links":163,"yearsLived":null},{"el":null,"elLabel":"Nicholas II of Russia","born":"1868-05-18","died":"1918-07-17","links":128,"yearsLived":50.1945205479452},{"el":"http://www.wikidata.org/entity/Q80976","elLabel":"Prince Philip, Duke of Edinburgh","born":"1921-06-10","died":"2021-04-09","links":125,"yearsLived":99.8986301369863},{"el":null,"elLabel":"Felipe VI of Spain","born":"1968-01-30","died":null,"links":113,"yearsLived":null},{"el":"http://www.wikidata.org/entity/Q102139","elLabel":"Margrethe II of Denmark","born":"1940-04-16","died":null,"links":112,"yearsLived":null},{"el":"http://www.wikidata.org/entity/Q36812","elLabel":"William, Prince of Wales","born":"1982-06-21","died":null,"links":110,"yearsLived":null},{"el":"http://www.wikidata.org/entity/Q83171","elLabel":"Alexander II of Russia","born":"1818-04-29","died":"1881-03-13","links":102,"yearsLived":62.915068493150685},{"el":null,"elLabel":"Nicholas I of Russia","born":"1796-07-06","died":"1855-03-02","links":102,"yearsLived":58.69041095890411},{"el":"http://www.wikidata.org/entity/Q120180","elLabel":"Alexander III of Russia","born":"1845-03-10","died":"1894-11-01","links":96,"yearsLived":49.679452054794524},{"el":"http://www.wikidata.org/entity/Q152316","elLabel":"Prince Harry, Duke of Sussex","born":"1984-09-15","died":null,"links":93,"yearsLived":null}]
+        [{"el":null,"elLabel":"Charles III","born":"1948-11-14","died":null,"links":163,"yearsLived":null},{"el":null,"elLabel":"Nicholas II of Russia","born":"1868-05-18","died":"1918-07-17","links":128,"yearsLived":50.1945205479452},{"el":"http://www.wikidata.org/entity/Q80976","elLabel":"Prince Philip, Duke of Edinburgh","born":"1921-06-10","died":"2021-04-09","links":125,"yearsLived":99.8986301369863},{"el":null,"elLabel":"Felipe VI of Spain","born":"1968-01-30","died":null,"links":113,"yearsLived":null},{"el":"http://www.wikidata.org/entity/Q102139","elLabel":"Margrethe II of Denmark","born":"1940-04-16","died":null,"links":112,"yearsLived":null}]
         """;
     }
     private static String readFromStdin() throws IOException {

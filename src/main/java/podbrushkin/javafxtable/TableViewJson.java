@@ -192,8 +192,13 @@ public class TableViewJson extends TableView<MyObject> {
         column.setCellValueFactory(cellData -> {
             JsonArray value = null;
             JsonElement element = cellData.getValue().getColumn(columnName);
-            if (element != null && !element.isJsonNull()) {
-                value = element.getAsJsonArray();
+            try {
+                if (element != null && !element.isJsonNull()) {
+                    value = element.getAsJsonArray();
+                }
+            } catch (IllegalStateException e) {
+                e.printStackTrace();
+                // value = element.toString();
             }
             return new SimpleObjectProperty<>(value);
         });
@@ -202,7 +207,7 @@ public class TableViewJson extends TableView<MyObject> {
                 @Override
                 protected void updateItem(JsonArray item, boolean empty) {
                     super.updateItem(item, empty);
-                    if (item != null) {
+                    if (item != null && !empty) {
                         String view = String.format("▨ Array[%s]", item.size());
                         setText(empty ? null : view);
                         setOnMouseClicked(onArrayClicked);
@@ -250,6 +255,7 @@ public class TableViewJson extends TableView<MyObject> {
             for (TableColumn<MyObject, ?> childColumn : buildColumns(dataForNewColumns,rowObjectToValue)) {
                 parentTableColumn.getColumns().add(childColumn);
             };
+            this.refresh();    // prevents dead cells issue with nested columns
         };
 
         column.setCellFactory(tc -> {
