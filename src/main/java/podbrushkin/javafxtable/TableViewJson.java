@@ -23,7 +23,7 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 
-public class TableViewJson extends TableView<MyObject> {
+public class TableViewJson extends TableView<JsonObject> {
     private HostServices hostServices;
     private EventHandler<? super MouseEvent> onArrayClicked;
 
@@ -51,15 +51,15 @@ public class TableViewJson extends TableView<MyObject> {
     /* private List<TableColumn<MyObject,?>> buildColumns(JsonArray data) {
         
     } */
-    private List<TableColumn<MyObject,?>> buildColumns(JsonArray data, BiFunction<MyObject,String,JsonElement> rowToCellFunc) {
+    private List<TableColumn<JsonObject,?>> buildColumns(JsonArray data, BiFunction<JsonObject,String,JsonElement> rowToCellFunc) {
         var referenceJsonObj = data.get(0).getAsJsonObject();
         String[] headers = referenceJsonObj.keySet().toArray(new String[0]);
-        var builtColumns = new ArrayList<TableColumn<MyObject,?>>();
+        var builtColumns = new ArrayList<TableColumn<JsonObject,?>>();
         // for each property find first non-null value and create a column
         for (var columnName : headers) {
             for (int j = 0; j < data.size(); j++) {
-                MyObject sampleObj = new MyObject(data.get(j).getAsJsonObject());
-                JsonElement sampleValue = sampleObj.getColumn(columnName);
+                JsonObject sampleObj = data.get(j).getAsJsonObject();
+                JsonElement sampleValue = sampleObj.get(columnName);
 
                 if (sampleValue.isJsonPrimitive()) {
                     builtColumns.add(createColumnForJsonPrimitives(columnName, sampleValue, rowToCellFunc));
@@ -84,11 +84,11 @@ public class TableViewJson extends TableView<MyObject> {
         return builtColumns;
     }
 
-    private TableColumn<MyObject, ?> createColumnForJsonPrimitives(String columnName, JsonElement sampleValue) {
-        BiFunction<MyObject,String,JsonElement> rowToCellFunc = (myObj,propName) -> myObj.getColumn(columnName);
+    private TableColumn<JsonObject, ?> createColumnForJsonPrimitives(String columnName, JsonElement sampleValue) {
+        BiFunction<JsonObject,String,JsonElement> rowToCellFunc = (myObj,propName) -> myObj.get(columnName);
         return createColumnForJsonPrimitives(columnName, sampleValue, rowToCellFunc);
     }
-    private TableColumn<MyObject, ?> createColumnForJsonPrimitives(String columnName, JsonElement sampleValue, BiFunction<MyObject,String,JsonElement> rowToCellFunc) {
+    private TableColumn<JsonObject, ?> createColumnForJsonPrimitives(String columnName, JsonElement sampleValue, BiFunction<JsonObject,String,JsonElement> rowToCellFunc) {
         // :TODO please change
         if (rowToCellFunc == null) {
             return createColumnForJsonPrimitives(columnName, sampleValue);
@@ -96,7 +96,7 @@ public class TableViewJson extends TableView<MyObject> {
         Class clazz = getType(sampleValue.getAsJsonPrimitive());
 
         if (String.class.isAssignableFrom(clazz)) {
-            TableColumn<MyObject, String> column = new TableColumn<>(columnName);
+            TableColumn<JsonObject, String> column = new TableColumn<>(columnName);
             
             column.setCellValueFactory(cellData -> {
                 String value = null;
@@ -107,7 +107,7 @@ public class TableViewJson extends TableView<MyObject> {
                 return new SimpleObjectProperty<>(value);
             });
             column.setCellFactory(tc -> {
-                TableCell<MyObject, String> cell = new TableCell<MyObject, String>() {
+                TableCell<JsonObject, String> cell = new TableCell<JsonObject, String>() {
                     boolean isLink(String item, boolean empty) {
                         return !empty && item != null && getText() != null && item.matches("^https?://.*");
                     }
@@ -148,7 +148,7 @@ public class TableViewJson extends TableView<MyObject> {
         
 
         if (Integer.class.isAssignableFrom(clazz)) {
-            TableColumn<MyObject, Integer> column = new TableColumn<>(columnName);
+            TableColumn<JsonObject, Integer> column = new TableColumn<>(columnName);
             column.setCellValueFactory(cellData -> {
                 Integer value = null;
                 JsonElement element = rowToCellFunc.apply(cellData.getValue(),columnName);
@@ -161,7 +161,7 @@ public class TableViewJson extends TableView<MyObject> {
             return column;
         }
         if (Float.class.isAssignableFrom(clazz)) {
-            TableColumn<MyObject, Float> column = new TableColumn<>(columnName);
+            TableColumn<JsonObject, Float> column = new TableColumn<>(columnName);
             column.setCellValueFactory(cellData -> {
                 Float value = null;
                 JsonElement element = rowToCellFunc.apply(cellData.getValue(),columnName);
@@ -173,7 +173,7 @@ public class TableViewJson extends TableView<MyObject> {
             return column;
         }
         if (Boolean.class.isAssignableFrom(clazz)) {
-            TableColumn<MyObject, Boolean> column = new TableColumn<>(columnName);
+            TableColumn<JsonObject, Boolean> column = new TableColumn<>(columnName);
             column.setCellValueFactory(cellData -> {
                 Boolean value = null;
                 JsonElement element = rowToCellFunc.apply(cellData.getValue(),columnName);
@@ -187,11 +187,11 @@ public class TableViewJson extends TableView<MyObject> {
         throw new IllegalStateException("What is this column? Not a primitive. "+columnName);
     }
 
-    private TableColumn<MyObject, JsonArray> createColumnForJsonArrays(String columnName) {
-        TableColumn<MyObject, JsonArray> column = new TableColumn<>(columnName);
+    private TableColumn<JsonObject, JsonArray> createColumnForJsonArrays(String columnName) {
+        TableColumn<JsonObject, JsonArray> column = new TableColumn<>(columnName);
         column.setCellValueFactory(cellData -> {
             JsonArray value = null;
-            JsonElement element = cellData.getValue().getColumn(columnName);
+            JsonElement element = cellData.getValue().get(columnName);
             try {
                 if (element != null && !element.isJsonNull()) {
                     value = element.getAsJsonArray();
@@ -203,7 +203,7 @@ public class TableViewJson extends TableView<MyObject> {
             return new SimpleObjectProperty<>(value);
         });
         column.setCellFactory(tc -> {
-            TableCell<MyObject, JsonArray> cell = new TableCell<MyObject, JsonArray>() {
+            TableCell<JsonObject, JsonArray> cell = new TableCell<JsonObject, JsonArray>() {
                 @Override
                 protected void updateItem(JsonArray item, boolean empty) {
                     super.updateItem(item, empty);
@@ -220,11 +220,11 @@ public class TableViewJson extends TableView<MyObject> {
         return column;
     }
 
-    private TableColumn<MyObject, JsonObject> createColumnForJsonObjects(String columnName) {
-        TableColumn<MyObject, JsonObject> column = new TableColumn<>(columnName);
+    private TableColumn<JsonObject, JsonObject> createColumnForJsonObjects(String columnName) {
+        TableColumn<JsonObject, JsonObject> column = new TableColumn<>(columnName);
         column.setCellValueFactory(cellData -> {
             JsonObject value = null;
-            JsonElement element = cellData.getValue().getColumn(columnName);
+            JsonElement element = cellData.getValue().get(columnName);
             if (element != null && !element.isJsonNull()) {
                 value = element.getAsJsonObject();
             }
@@ -233,7 +233,7 @@ public class TableViewJson extends TableView<MyObject> {
 
         // this will create a new window table
         EventHandler<? super MouseEvent> newWindowTableHandler = e -> {
-            var tableCell = (TableCell<MyObject, JsonArray>)e.getSource();
+            var tableCell = (TableCell<JsonObject, JsonArray>)e.getSource();
             var tableColumn = tableCell.getTableColumn();
             var columnData = new JsonArray();
             for (var val : tableCell.getTableView().getItems()) {
@@ -242,24 +242,24 @@ public class TableViewJson extends TableView<MyObject> {
             displayTable(new TableViewJson(columnData));
         };
         EventHandler<? super MouseEvent> newColumnsTableHandler = e -> {
-            var tableCell = (TableCell<MyObject, JsonArray>)e.getSource();
+            var tableCell = (TableCell<JsonObject, JsonArray>)e.getSource();
             var parentTableColumn = tableCell.getTableColumn();
             var dataForNewColumns = new JsonArray();
             for (var val : tableCell.getTableView().getItems()) {
                 dataForNewColumns.add(parentTableColumn.getCellObservableValue(val).getValue());
             }
             
-            BiFunction<MyObject,String,JsonElement> rowObjectToValue = 
-                (myObj,propName) -> myObj.getColumn(parentTableColumn.getText()).getAsJsonObject().get(propName);
+            BiFunction<JsonObject,String,JsonElement> rowObjectToValue = 
+                (myObj,propName) -> myObj.get(parentTableColumn.getText()).getAsJsonObject().get(propName);
 
-            for (TableColumn<MyObject, ?> childColumn : buildColumns(dataForNewColumns,rowObjectToValue)) {
+            for (TableColumn<JsonObject, ?> childColumn : buildColumns(dataForNewColumns,rowObjectToValue)) {
                 parentTableColumn.getColumns().add(childColumn);
             };
             this.refresh();    // prevents dead cells issue with nested columns
         };
 
         column.setCellFactory(tc -> {
-            TableCell<MyObject, JsonObject> cell = new TableCell<MyObject, JsonObject>() {
+            TableCell<JsonObject, JsonObject> cell = new TableCell<JsonObject, JsonObject>() {
                 @Override
                 protected void updateItem(JsonObject item, boolean empty) {
                     super.updateItem(item, empty);
@@ -283,7 +283,7 @@ public class TableViewJson extends TableView<MyObject> {
     private void fillData(JsonArray data) {
         for (int i = 0; i < data.size(); i++) {
             // Object[] rowValues = jsonObjectToValuesArray();
-            MyObject row = new MyObject(data.get(i).getAsJsonObject());
+            JsonObject row = data.get(i).getAsJsonObject();
             this.getItems().add(row);
         }
     }

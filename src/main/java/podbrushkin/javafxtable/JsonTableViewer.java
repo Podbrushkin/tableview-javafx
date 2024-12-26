@@ -93,7 +93,7 @@ public class JsonTableViewer extends Application {
         TableViewJson tableView = new TableViewJson(data,getHostServices());
         tableView.setOnArrayClicked(me -> {
 
-            TableCell<MyObject, JsonArray> cell = (TableCell<MyObject, JsonArray>) me.getSource();
+            TableCell<JsonObject, JsonArray> cell = (TableCell<JsonObject, JsonArray>) me.getSource();
             JsonArray chosenArray = cell.getItem();
             tabPane.getTabs().add(new Tab("array", getTableNode(chosenArray)));
             tabPane.getSelectionModel().selectLast();
@@ -156,7 +156,7 @@ public class JsonTableViewer extends Application {
         return root;
     }
 
-    public static ZoomingPane buildZoomingPane(TableView<MyObject> tableView) {
+    public static ZoomingPane buildZoomingPane(TableView<?> tableView) {
         ZoomingPane zp = new ZoomingPane(tableView);
         tableView.addEventFilter(ScrollEvent.SCROLL, e -> {
             if (e.isControlDown()) {
@@ -174,9 +174,9 @@ public class JsonTableViewer extends Application {
         return zp;
     }
 
-    public static Node buildSearchField(TableView<MyObject> tableView) {
+    public static Node buildSearchField(TableView<JsonObject> tableView) {
         var filteredList = new FilteredList<>(tableView.getItems());
-        SortedList<MyObject> sortableData = new SortedList<>(filteredList);
+        SortedList<JsonObject> sortableData = new SortedList<>(filteredList);
         tableView.setItems(sortableData);
         sortableData.comparatorProperty().bind(tableView.comparatorProperty());
         // tableView.setItems(filteredList);
@@ -219,7 +219,7 @@ public class JsonTableViewer extends Application {
 
     
 
-    public static Node buildCommonControl(TableView<MyObject> tableView) {
+    public static Node buildCommonControl(TableView<JsonObject> tableView) {
         final GridPane grid = new GridPane();
         grid.setHgap(5);
         grid.setVgap(10);
