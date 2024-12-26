@@ -56,6 +56,7 @@ import javafx.stage.Stage;
 import javafx.util.Callback;
 import javafx.util.Duration;
 import javafx.util.StringConverter;
+import podbrushkin.javafxcharts.ChartsController;
 
 public class JsonTableViewer extends Application {
     private TabPane tabPane = new TabPane();
@@ -147,7 +148,10 @@ public class JsonTableViewer extends Application {
             }
         });
         topRow.getChildren().add(settingsButton);
-
+        
+        var chartsButton = new Button("Charts");
+        chartsButton.setOnAction(e -> new ChartsController(tableView).showWindow());
+        topRow.getChildren().add(chartsButton);
         
         root.setCenter(zp);
         // root.setTop(getSearchField(tableView));
