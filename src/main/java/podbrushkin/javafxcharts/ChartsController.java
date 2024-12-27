@@ -1,5 +1,6 @@
 package podbrushkin.javafxcharts;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -21,24 +22,10 @@ public class ChartsController {
     private TableViewJson tableView;
     ComboBox<TableColumn<JsonObject,?>> columnComboBox1;
     ComboBox<TableColumn<JsonObject,?>> columnComboBox2;
-    // private List<String> columnNames;
-    // private ListView<String> listView;
 
     public ChartsController(TableViewJson tableView) {
         this.tableView = tableView;
-        // columnNames = tableView.getColumns().stream().map(tc -> tc.getText()).toList();
-        // final ObservableList<String> stringList =
-        //     FXCollections.<String>observableArrayList(columnNames);
-        // listView = new ListView<String>(stringList);
-        // listView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
-
-        
     }
-
-    /* private TableColumn<?,?> getColumnForName(String name) {
-        return tableView.getColumns().filtered(tc -> tc.getText().equals(name)).getFirst();
-    } */
-
     public void showWindow() {
         var borderPane = new BorderPane();
         
@@ -47,9 +34,18 @@ public class ChartsController {
         var leftVbox = new VBox();
         var submitButton = new Button("Submit");
         columnComboBox1 = new ComboBox<TableColumn<JsonObject,?>>();
-        columnComboBox1.getItems().addAll(tableView.getColumns());
         columnComboBox2 = new ComboBox<TableColumn<JsonObject,?>>();
-        columnComboBox2.getItems().addAll(tableView.getColumns());
+        
+        var parentAndChildColumns = new ArrayList<TableColumn<JsonObject, ?>>();
+        for (var tc : tableView.getColumns()) {
+            parentAndChildColumns.add(tc);
+            for (var tcChild : tc.getColumns()) {
+                parentAndChildColumns.add(tcChild);
+            }
+        }
+        columnComboBox1.getItems().addAll(parentAndChildColumns);
+        columnComboBox2.getItems().addAll(parentAndChildColumns);
+
         var comboboxDisplayname = new StringConverter<TableColumn<JsonObject,?>>() {
             @Override
             public String toString(TableColumn object) {
