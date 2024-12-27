@@ -1,7 +1,7 @@
 package podbrushkin.javafxcharts;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import com.google.gson.JsonObject;
@@ -21,9 +21,7 @@ import podbrushkin.javafxtable.TableViewJson;
 public class ChartsController {
 
     private TableViewJson tableView;
-    // ComboBox<TableColumn<JsonObject,?>> columnComboBox1;
-    // ComboBox<TableColumn<JsonObject,?>> columnComboBox2;
-    ArrayList<ComboBox<TableColumn<JsonObject,?>>> columnComboBoxes = new ArrayList<>();
+    private ArrayList<ComboBox<TableColumn<JsonObject,?>>> columnComboBoxes = new ArrayList<>();
 
     public ChartsController(TableViewJson tableView) {
         this.tableView = tableView;
@@ -50,7 +48,7 @@ public class ChartsController {
         };
         var leftVbox = new VBox();
         var pieProducer = new PieChartProducer();
-        for (String info : pieProducer.getExpectedColumnsInfo()) {
+        for (Map.Entry<String,Class> info : pieProducer.getExpectedColumnsInfo()) {
             var combo = new ComboBox<TableColumn<JsonObject,?>>();
             combo.getItems().addAll(parentAndChildColumns);
             combo.setConverter(comboboxDisplayname);
@@ -61,17 +59,10 @@ public class ChartsController {
         var submitButton = new Button("Submit");
         leftVbox.getChildren().add(submitButton);
 
-        // populateColumnComboBoxes();
-
-        // leftVbox.getChildren().addAll(listView,submitButton);
         submitButton.setOnAction(me -> {
-            // var selectedColumnNames = listView.getSelectionModel().getSelectedItems();
-            
-            ;
-            var pie = new PieChartProducer().createContent(createMapFromSelectedColumns());
+            var expectedTypes = pieProducer.getExpectedColumnsInfo().stream().map(entry -> entry.getValue()).toList();
+            var pie = new PieChartProducer().createContent(createArrayFromSelectedColumns(expectedTypes));
             borderPane.setCenter(pie);
-
-            // new PieChartProducer().createContent(stringToDouble)
         });
 
 
@@ -85,39 +76,31 @@ public class ChartsController {
         stage.centerOnScreen();
         stage.show();
     }
-    private Map<String,Double> createMapFromSelectedColumns() {
-        
-        TableColumn<JsonObject,?> selectedColumn1 = columnComboBoxes.get(0).getValue();
-        TableColumn<JsonObject,?> selectedColumn2 = columnComboBoxes.get(1).getValue();
-        
-
-        if (selectedColumn1 != null && selectedColumn2 != null) {
-            Map<String, Double> resultMap = new HashMap<>();
-            for (JsonObject row : tableView.getItems()) {
-                // JsonElement keyJsonEl = (JsonElement) selectedColumn1.getCellObservableValue(row).getValue();
-
-                // String key = (String) selectedColumn1.getCellObservableValue(row).getValue().toString();
-                var keyObj = selectedColumn1.getCellObservableValue(row).getValue();
-                var valueObj = selectedColumn2.getCellObservableValue(row).getValue();
-                if (keyObj == null || valueObj == null) {continue;}
-                String key = keyObj.toString();
-                Double value = Double.valueOf(valueObj.toString());
-                // Double value = (Double) selectedColumn2.getCellObservableValue(row).getValue();
-                resultMap.put(key, value);
+    private Object[][] createArrayFromSelectedColumns(List<Class> targetColumnTypes) {
+        var dataList = new ArrayList<List>();
+        //for each row
+        for (int i = 0; i < tableView.getItems().size(); i++) {
+            var singleRow = new ArrayList<>();
+            // for each column
+            for (int j = 0; j < columnComboBoxes.size(); j++) {
+                var selectedColumn = columnComboBoxes.get(j).getValue();
+                Class targetType = targetColumnTypes.get(j);
+                
+                Object cellRawValue = selectedColumn.getCellObservableValue(i).getValue();
+                if (cellRawValue == null) {break;}
+                else if (targetType.equals(String.class)) {
+                    singleRow.add(cellRawValue.toString());
+                }
+                else if (targetType.equals(Double.class)) {
+                    singleRow.add(Double.valueOf(cellRawValue.toString()));
+                }
             }
-            System.out.println("Created Map: " + resultMap); // Display or use the map as needed
-            return resultMap;
-            
-        } else {
-            System.err.println("Please select both columns!");
+            // each row should have legit values for all columns
+            if (singleRow.size() == columnComboBoxes.size() && !singleRow.contains(null)) {
+                dataList.add(singleRow);
+            }
         }
-        return null;
+        // 2d list to 2d array
+        return dataList.stream().map(List::toArray).toArray(Object[][]::new);
     }
-
-    /* private getPieChartForSelectedColumns() {
-        columnComboBox1 = new ComboBox<>();
-        columnComboBox2 = new ComboBox<>();
-        populateColumnComboBoxes();
-    } */
-    
 }

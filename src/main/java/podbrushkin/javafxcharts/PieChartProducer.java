@@ -1,5 +1,6 @@
 package podbrushkin.javafxcharts;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -28,21 +29,36 @@ public class PieChartProducer extends Application {
                 new PieChart.Data("Apple", 30));
     }
 
-    public Parent createContent(Map<String,Double> map) {
-        chart = new PieChart(generateData(map));
+
+
+    public ObservableList<PieChart.Data> generateData(Object[][] labelAndValue) {
+        System.out.printf("Object[%s][%s]%n",labelAndValue.length,labelAndValue[0].length);
+        for (var arr : labelAndValue) {
+            System.out.println(Arrays.toString(arr));
+        }
+        ObservableList<PieChart.Data> data = FXCollections.observableArrayList();
+        for (Object[] row : labelAndValue) {
+            var entry = new PieChart.Data((String)row[0], (Double)row[1]);
+            data.add(entry);
+        }
+        return data;
+    }
+    public Parent createContent(Object[][] labelAndValue) {
+        chart = new PieChart(generateData(labelAndValue));
         chart.setClockwise(false);
         return chart;
     }
+    
     public Parent createContent() {
         chart = new PieChart(generateDataSample());
         chart.setClockwise(false);
         return chart;
     }
 
-    public List<String> getExpectedColumnsInfo() {
+    public List<Map.Entry<String,Class>> getExpectedColumnsInfo() {
         return List.of(
-            "[String] Label",
-            "[Double] Value"
+            Map.entry("Label", String.class),
+            Map.entry("Value", Double.class)
             );
     }
 
