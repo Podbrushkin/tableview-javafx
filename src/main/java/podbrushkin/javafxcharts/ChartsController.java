@@ -47,8 +47,8 @@ public class ChartsController {
             }
         };
         var leftVbox = new VBox();
-        var pieProducer = new PieChartProducer();
-        for (Map.Entry<String,Class> info : pieProducer.getExpectedColumnsInfo()) {
+        ChartProducer chartProducer = new LineChartProducer();
+        for (Map.Entry<String,Class> info : chartProducer.getExpectedColumnsInfo()) {
             var combo = new ComboBox<TableColumn<JsonObject,?>>();
             combo.getItems().addAll(parentAndChildColumns);
             combo.setConverter(comboboxDisplayname);
@@ -60,9 +60,10 @@ public class ChartsController {
         leftVbox.getChildren().add(submitButton);
 
         submitButton.setOnAction(me -> {
-            var expectedTypes = pieProducer.getExpectedColumnsInfo().stream().map(entry -> entry.getValue()).toList();
-            var pie = new PieChartProducer().createContent(createArrayFromSelectedColumns(expectedTypes));
-            borderPane.setCenter(pie);
+            // var expectedTypes = chartProducer.getExpectedColumnsInfo().stream().map(entry -> entry.getValue()).toList();
+            var expectedTypes = chartProducer.getExpectedColumnsInfo();
+            var chart = chartProducer.createContent(createArrayFromSelectedColumns(expectedTypes));
+            borderPane.setCenter(chart);
         });
 
 
@@ -76,18 +77,30 @@ public class ChartsController {
         stage.centerOnScreen();
         stage.show();
     }
-    private Object[][] createArrayFromSelectedColumns(List<Class> targetColumnTypes) {
+    private Object[][] createArrayFromSelectedColumns(List<Map.Entry<String, Class>> targetColumnTypes) {
         var dataList = new ArrayList<List>();
         //for each row
         for (int i = 0; i < tableView.getItems().size(); i++) {
             var singleRow = new ArrayList<>();
             // for each column
             for (int j = 0; j < columnComboBoxes.size(); j++) {
-                var selectedColumn = columnComboBoxes.get(j).getValue();
-                Class targetType = targetColumnTypes.get(j);
                 
-                Object cellRawValue = selectedColumn.getCellObservableValue(i).getValue();
-                if (cellRawValue == null) {break;}
+                Class targetType = targetColumnTypes.get(j).getValue();
+                boolean optional = targetColumnTypes.get(j).getKey().contains("optional");
+                TableColumn<JsonObject, ?> selectedColumn = columnComboBoxes.get(j).getValue();
+                
+                // TODO: pls fix
+                Object cellRawValue = null;
+                if (selectedColumn == null) {
+                    cellRawValue = "";
+                } else {
+                    cellRawValue = selectedColumn.getCellObservableValue(i).getValue();
+                }
+
+                if (cellRawValue == null && optional) {
+                    cellRawValue = "";
+                } else if (cellRawValue == null) {break;}
+
                 else if (targetType.equals(String.class)) {
                     singleRow.add(cellRawValue.toString());
                 }

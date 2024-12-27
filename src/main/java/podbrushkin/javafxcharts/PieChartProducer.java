@@ -12,7 +12,7 @@ import javafx.scene.Scene;
 import javafx.scene.chart.PieChart;
 import javafx.stage.Stage;
 
-public class PieChartProducer extends Application {
+public class PieChartProducer extends Application implements ChartProducer {
 
     private PieChart chart;
 
