@@ -1,5 +1,6 @@
 package podbrushkin.javafxcharts;
 
+import java.util.List;
 import java.util.Map;
 
 import javafx.application.Application;
@@ -36,6 +37,13 @@ public class PieChartProducer extends Application {
         chart = new PieChart(generateDataSample());
         chart.setClockwise(false);
         return chart;
+    }
+
+    public List<String> getExpectedColumnsInfo() {
+        return List.of(
+            "[String] Label",
+            "[Double] Value"
+            );
     }
 
     @Override public void start(Stage primaryStage) throws Exception {
