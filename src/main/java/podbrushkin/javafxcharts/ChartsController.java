@@ -6,12 +6,15 @@ import java.util.Map;
 
 import com.google.gson.JsonObject;
 
+import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
@@ -22,6 +25,11 @@ public class ChartsController {
 
     private TableViewJson tableView;
     private ArrayList<ComboBox<TableColumn<JsonObject,?>>> columnComboBoxes = new ArrayList<>();
+    private List<ChartProducer> chartProducers = List.of(
+        new PieChartProducer(), 
+        new LineChartProducer(),
+        new ScatterChartProducer()
+    );
 
     public ChartsController(TableViewJson tableView) {
         this.tableView = tableView;
@@ -29,13 +37,58 @@ public class ChartsController {
     public void showWindow() {
         var borderPane = new BorderPane();
         
-        var parentAndChildColumns = new ArrayList<TableColumn<JsonObject, ?>>();
-        for (var tc : tableView.getColumns()) {
-            parentAndChildColumns.add(tc);
-            for (var tcChild : tc.getColumns()) {
-                parentAndChildColumns.add(tcChild);
+        var leftVboxControls = new VBox();
+        var topHbox = new HBox();
+        var chartProducerSelector = new ComboBox<ChartProducer>();
+        chartProducerSelector.getItems().addAll(chartProducers);
+
+        var comboboxChartDisplay = new StringConverter<ChartProducer>() {
+            @Override
+            public String toString(ChartProducer object) {
+                return object != null ? object.getClass().getSimpleName() : "";
             }
-        }
+            @Override
+            public ChartProducer fromString(String string) {
+                return null;
+            }
+        };
+        chartProducerSelector.setConverter(comboboxChartDisplay);
+
+        
+        // chartProducerSelector.getSelectionModel().selectedItemProperty().addListener(producer -> {
+        chartProducerSelector.valueProperty().addListener((ov,oldval,selectedProducer) -> {
+            leftVboxControls.getChildren().clear();
+            fillControlPanel(selectedProducer, leftVboxControls);
+        });
+
+
+        chartProducerSelector.getSelectionModel().select(0);
+
+        
+        
+        var submitButton = new Button("Submit");
+        submitButton.setOnAction(me -> {
+            // var expectedTypes = chartProducer.getExpectedColumnsInfo().stream().map(entry -> entry.getValue()).toList();
+            var chartProducer = chartProducerSelector.getSelectionModel().getSelectedItem();
+            var chart = buildChart(chartProducer);
+            borderPane.setCenter(chart);
+        });
+        topHbox.getChildren().addAll(chartProducerSelector,submitButton);
+
+
+        borderPane.setTop(topHbox);
+        borderPane.setLeft(leftVboxControls);
+
+        
+        final Stage stage = new Stage();
+        Scene scene = new Scene(borderPane, 200, 200, Color.WHITESMOKE);
+        stage.setScene(scene);
+        stage.setTitle("New stage");
+        stage.centerOnScreen();
+        stage.show();
+    }
+
+    private void fillControlPanel(ChartProducer chartProducer, Pane controlPanel) {
         var comboboxDisplayname = new StringConverter<TableColumn<JsonObject,?>>() {
             @Override
             public String toString(TableColumn object) {
@@ -46,36 +99,26 @@ public class ChartsController {
                 return null;
             }
         };
-        var leftVbox = new VBox();
-        ChartProducer chartProducer = new LineChartProducer();
+        var parentAndChildColumns = new ArrayList<TableColumn<JsonObject, ?>>();
+        for (var tc : tableView.getColumns()) {
+            parentAndChildColumns.add(tc);
+            for (var tcChild : tc.getColumns()) {
+                parentAndChildColumns.add(tcChild);
+            }
+        }
+        columnComboBoxes.clear();
         for (Map.Entry<String,Class> info : chartProducer.getExpectedColumnsInfo()) {
             var combo = new ComboBox<TableColumn<JsonObject,?>>();
             combo.getItems().addAll(parentAndChildColumns);
             combo.setConverter(comboboxDisplayname);
-            leftVbox.getChildren().add(new Label(info+":"));
-            leftVbox.getChildren().add(combo);
+            controlPanel.getChildren().add(new Label(info+":"));
+            controlPanel.getChildren().add(combo);
             columnComboBoxes.add(combo);
         }
-        var submitButton = new Button("Submit");
-        leftVbox.getChildren().add(submitButton);
-
-        submitButton.setOnAction(me -> {
-            // var expectedTypes = chartProducer.getExpectedColumnsInfo().stream().map(entry -> entry.getValue()).toList();
-            var expectedTypes = chartProducer.getExpectedColumnsInfo();
-            var chart = chartProducer.createContent(createArrayFromSelectedColumns(expectedTypes));
-            borderPane.setCenter(chart);
-        });
-
-
-        borderPane.setLeft(leftVbox);
-
-        
-        final Stage stage = new Stage();
-        Scene scene = new Scene(borderPane, 200, 200, Color.WHITESMOKE);
-        stage.setScene(scene);
-        stage.setTitle("New stage");
-        stage.centerOnScreen();
-        stage.show();
+    }
+    private Parent buildChart(ChartProducer chartProducer) {
+        var expectedTypes = chartProducer.getExpectedColumnsInfo();
+        return chartProducer.createContent(createArrayFromSelectedColumns(expectedTypes));
     }
     private Object[][] createArrayFromSelectedColumns(List<Map.Entry<String, Class>> targetColumnTypes) {
         var dataList = new ArrayList<List>();
