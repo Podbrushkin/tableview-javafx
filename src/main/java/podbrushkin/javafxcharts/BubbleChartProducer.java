@@ -1,21 +1,27 @@
 package podbrushkin.javafxcharts;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import javafx.beans.property.DoubleProperty;
+import javafx.beans.property.SimpleDoubleProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.chart.Axis;
 import javafx.scene.chart.BubbleChart;
-import javafx.scene.chart.LineChart;
 import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.XYChart;
+import javafx.scene.control.Label;
+import javafx.scene.control.Slider;
 import javafx.scene.layout.StackPane;
 import javafx.scene.shape.Ellipse;
 
 public class BubbleChartProducer implements ChartProducer {
+    private CircularBubbleChart chart;
     
     public ObservableList<XYChart.Series<Double, Double>> generateData(Object[][] seriesXY) {
         ObservableList<XYChart.Series<Double, Double>> xyChartData = FXCollections.observableArrayList();
@@ -48,7 +54,7 @@ public class BubbleChartProducer implements ChartProducer {
         var yAxis = new NumberAxis();
         yAxis.setAutoRanging(true);
 
-        var chart = new CircularBubbleChart(xAxis,yAxis);
+        chart = new CircularBubbleChart(xAxis,yAxis);
         chart.getData().addAll(generateData(seriesXY));
         return chart;
     }
@@ -62,15 +68,28 @@ public class BubbleChartProducer implements ChartProducer {
             );
     }
 
+    @Override
+    public List<Node> createControls() {
+        var controls = new ArrayList<Node>();
+        var bubbleSizeSlider = new Slider(0, 5, 1);
+        bubbleSizeSlider.valueProperty().bindBidirectional(chart.bubbleSizeFactorProperty());
+        controls.add(new Label("Bubble Size"));
+        controls.add(bubbleSizeSlider);
+        return controls;
+    }
 
     
 }
 
 // https://stackoverflow.com/a/38614934/
 class CircularBubbleChart<X, Y> extends BubbleChart<X, Y> {
+    private DoubleProperty bubbleSizeFactorProperty = new SimpleDoubleProperty(1);
 
     public CircularBubbleChart(Axis<X> xAxis, Axis<Y> yAxis) {
         super(xAxis, yAxis);
+        bubbleSizeFactorProperty.addListener((observable, oldValue, newValue) -> {
+            layoutPlotChildren(); // Call layoutPlotChildren when the property changes
+        });
     }
 
     public CircularBubbleChart(Axis<X> xAxis, Axis<Y> yAxis, ObservableList<Series<X, Y>> data) {
@@ -86,10 +105,21 @@ class CircularBubbleChart<X, Y> extends BubbleChart<X, Y> {
             .map(StackPane::getShape)
             .map(Ellipse.class::cast)
             .forEach(ellipse -> {
-                double radius = Math.sqrt(ellipse.getRadiusX()*ellipse.getRadiusY());
+                double radius = Math.sqrt(ellipse.getRadiusX()*ellipse.getRadiusY())*bubbleSizeFactorProperty.get();
                 ellipse.setRadiusX(radius);
                 ellipse.setRadiusY(radius);
             });
         
+    }
+
+    public double getBubbleSizeFactor() {
+        return bubbleSizeFactorProperty.get();
+    }
+
+    public void setBubbleSizeFactor(double bubbleSizeFactor) {
+        bubbleSizeFactorProperty.set(bubbleSizeFactor);
+    }
+    public final DoubleProperty bubbleSizeFactorProperty() {
+        return bubbleSizeFactorProperty;
     }
 }

@@ -7,22 +7,17 @@ import java.util.Map;
 import com.google.gson.JsonObject;
 
 import javafx.beans.property.DoubleProperty;
-import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.chart.Chart;
-import javafx.scene.chart.LineChart;
 import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.XYChart;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
-import javafx.scene.control.Slider;
 import javafx.scene.control.Spinner;
 import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.TableColumn;
-import javafx.scene.control.TextField;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
@@ -88,6 +83,9 @@ public class ChartsController {
             if (XYChart.class.isAssignableFrom(chart.getClass())) {
                 leftVboxControls.getChildren().add(buildControlPanel((XYChart<Number,Number>)chart));
             }
+            
+            leftVboxControls.getChildren().addAll(chartProducer.createControls());
+            
             
             borderPane.setCenter(chart);
         });
@@ -233,6 +231,7 @@ public class ChartsController {
             // new Label("Xaxis.upperBoundProperty"),
             // createBoundSpinner(xAxis.upperBoundProperty(), Integer.MIN_VALUE, Integer.MAX_VALUE)
         );
+        
         return vbox;
     }
     public Spinner<Double> createBoundSpinner(DoubleProperty doubleProperty, double min, double max) {
