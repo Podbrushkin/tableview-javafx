@@ -6,12 +6,23 @@ import java.util.Map;
 
 import com.google.gson.JsonObject;
 
+import javafx.beans.property.DoubleProperty;
+import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.chart.Chart;
+import javafx.scene.chart.LineChart;
+import javafx.scene.chart.NumberAxis;
+import javafx.scene.chart.XYChart;
 import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.Slider;
+import javafx.scene.control.Spinner;
+import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.TableColumn;
+import javafx.scene.control.TextField;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
@@ -28,7 +39,8 @@ public class ChartsController {
     private List<ChartProducer> chartProducers = List.of(
         new PieChartProducer(), 
         new LineChartProducer(),
-        new ScatterChartProducer()
+        new ScatterChartProducer(),
+        new BubbleChartProducer()
     );
 
     public ChartsController(TableViewJson tableView) {
@@ -61,6 +73,7 @@ public class ChartsController {
             fillControlPanel(selectedProducer, leftVboxControls);
         });
 
+        
 
         chartProducerSelector.getSelectionModel().select(0);
 
@@ -70,7 +83,12 @@ public class ChartsController {
         submitButton.setOnAction(me -> {
             // var expectedTypes = chartProducer.getExpectedColumnsInfo().stream().map(entry -> entry.getValue()).toList();
             var chartProducer = chartProducerSelector.getSelectionModel().getSelectedItem();
-            var chart = buildChart(chartProducer);
+            Parent chart = buildChart(chartProducer);
+            // var x = ;
+            if (XYChart.class.isAssignableFrom(chart.getClass())) {
+                leftVboxControls.getChildren().add(buildControlPanel((XYChart<Number,Number>)chart));
+            }
+            
             borderPane.setCenter(chart);
         });
         topHbox.getChildren().addAll(chartProducerSelector,submitButton);
@@ -114,6 +132,14 @@ public class ChartsController {
             controlPanel.getChildren().add(new Label(info+":"));
             controlPanel.getChildren().add(combo);
             columnComboBoxes.add(combo);
+
+            // Autoselect if name the same
+            for (var clmn : parentAndChildColumns) {
+                if (clmn.getText().equals(info.getKey())) {
+                    combo.getSelectionModel().select(clmn);
+                    break;
+                }
+            }
         }
     }
     private Parent buildChart(ChartProducer chartProducer) {
@@ -159,4 +185,103 @@ public class ChartsController {
         // 2d list to 2d array
         return dataList.stream().map(List::toArray).toArray(Object[][]::new);
     }
+
+    private VBox buildControlPanel(XYChart<Number,Number> chart){
+        var vbox = new VBox();
+        // var castedChart = (LineChart)chart;
+        var xAxis = (NumberAxis)chart.getXAxis();
+        
+
+        Spinner<Double> xLowerSp = createBoundSpinner(xAxis.lowerBoundProperty(), Integer.MIN_VALUE, Integer.MAX_VALUE);
+
+        var autoRangingCheckBox = new CheckBox("Xaxis.autoRanging");
+        
+        // xAxis.setAutoRanging(true);
+        autoRangingCheckBox.selectedProperty().addListener((obs, oldValue, newValue) -> {
+            xAxis.setAutoRanging(newValue);
+            if (newValue) {
+                // xAxis.lowerBoundProperty().asObject().unbind();
+                // xLowerSp.getValueFactory().setValue(xAxis.getLowerBound()); 
+                // xLowerSp.getValueFactory().valueProperty().bind(xAxis.lowerBoundProperty().asObject());
+            } else {
+                // xAxis.lowerBoundProperty().asObject().bind(xLowerSp.valueProperty());
+                xLowerSp.getValueFactory().setValue(xAxis.getLowerBound()); 
+                
+            }
+        });
+        autoRangingCheckBox.setSelected(true);
+        
+        // autorangingCb.selectedProperty().bindBidirectional(xAxis.autoRangingProperty());
+
+        
+        xLowerSp.disableProperty().bind(autoRangingCheckBox.selectedProperty());
+
+        // xLowerSp.getValueFactory().valueProperty().bindBidirectional(xAxis.lowerBoundProperty().asObject());
+        // xAxis.lowerBoundProperty().asObject().bindBidirectional(xLowerSp.getValueFactory().valueProperty());
+        
+        
+        xLowerSp.valueProperty().addListener((obs, oldValue, newValue) -> {
+            // if (!xAxis.isAutoRanging()) {
+            xAxis.setLowerBound(newValue);
+            // }
+        });
+
+        vbox.getChildren().addAll(
+            autoRangingCheckBox,
+            new Label("Xaxis.lowerBoundProperty"),
+            xLowerSp
+            // new Label("Xaxis.upperBoundProperty"),
+            // createBoundSpinner(xAxis.upperBoundProperty(), Integer.MIN_VALUE, Integer.MAX_VALUE)
+        );
+        return vbox;
+    }
+    public Spinner<Double> createBoundSpinner(DoubleProperty doubleProperty, double min, double max) {
+        Spinner<Double> spinner = new Spinner<>();
+        SpinnerValueFactory<Double> valueFactory = new SpinnerValueFactory.DoubleSpinnerValueFactory(min, max);
+        spinner.setValueFactory(valueFactory);
+        spinner.setEditable(true);
+        // System.out.println(doubleProperty.doubleValue());
+        // doubleProperty.bind(spinner.valueProperty());
+        // spinner.getValueFactory().valueProperty().bindBidirectional(doubleProperty.asObject());
+        final double[] mouseAnchorY = {0d};
+        final double[] spinnerValOnStartDrag = {0d};
+        
+        spinner.getEditor().setOnMousePressed(event -> {
+            // Capture the starting Y position and spinner value
+            mouseAnchorY[0] = event.getSceneY();
+            spinnerValOnStartDrag[0] = spinner.getValue();
+        });
+        // Mouse dragged event to calculate new value
+        spinner.getEditor().setOnMouseDragged(event -> {
+            double deltaY = mouseAnchorY[0] - event.getSceneY();
+            
+            var valAbs = Math.abs(spinnerValOnStartDrag[0]);
+            var factor = String.valueOf(valAbs).length();
+            
+            double newValue = spinnerValOnStartDrag[0]+deltaY*factor;
+            spinner.getValueFactory().setValue(newValue);
+        });
+        return spinner;
+    }
+    /* public HBox createBoundSliderAndTextField(DoubleProperty doubleProperty, double min, double max) {
+        Slider slider = new Slider(min, max, doubleProperty.get());
+        TextField textField = new TextField();
+
+        // Bind the slider value to the DoubleProperty
+        slider.valueProperty().bind(doubleProperty);
+
+        // Bind the text of the TextField to the DoubleProperty
+        textField.textProperty().bindBidirectional(doubleProperty, java.text.NumberFormat.getNumberInstance());
+
+        // Format TextField value when focus is lost
+        textField.focusedProperty().addListener((obs, oldVal, newVal) -> {
+            if (!newVal) {
+                textField.setText(java.text.NumberFormat.getNumberInstance().format(doubleProperty.get()));
+            }
+        });
+
+        HBox hbox = new HBox(10);
+        hbox.getChildren().addAll(slider, textField);
+        return hbox;
+    } */
 }

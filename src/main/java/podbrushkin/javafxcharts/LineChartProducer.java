@@ -15,10 +15,6 @@ import javafx.scene.chart.XYChart;
 public class LineChartProducer implements ChartProducer {
 
     public ObservableList<XYChart.Series<Double, Double>> generateData(Object[][] seriesXY) {
-        System.out.printf("Object[%s][%s]%n", seriesXY.length, seriesXY[0].length);
-        for (var arr : seriesXY) {
-            System.out.println(Arrays.toString(arr));
-        }
 
         ObservableList<XYChart.Series<Double, Double>> lineChartData = FXCollections.observableArrayList();
         Map<String, XYChart.Series<Double, Double>> seriesMap = new HashMap<>();
