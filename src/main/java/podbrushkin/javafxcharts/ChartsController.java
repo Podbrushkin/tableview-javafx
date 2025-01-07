@@ -9,6 +9,7 @@ import com.google.gson.JsonObject;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.Property;
+import javafx.geometry.Insets;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.chart.NumberAxis;
@@ -17,6 +18,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.Separator;
 import javafx.scene.control.Spinner;
 import javafx.scene.control.TableColumn;
 import javafx.scene.layout.BorderPane;
@@ -49,7 +51,13 @@ public class ChartsController {
     public void showWindow() {
         var borderPane = new BorderPane();
         
-        var leftVboxControls = new VBox();
+        var leftVboxRoot = new VBox();
+        var leftVboxInit = new VBox();
+        var leftVboxDisplay = new VBox();
+        var sep = new Separator();
+        sep.setPadding(new Insets(10));
+        leftVboxRoot.getChildren().addAll(leftVboxInit,sep,leftVboxDisplay);
+
         var topHbox = new HBox();
         var chartProducerSelector = new ComboBox<ChartProducer>();
         chartProducerSelector.getItems().addAll(chartProducers);
@@ -69,8 +77,8 @@ public class ChartsController {
         
         // chartProducerSelector.getSelectionModel().selectedItemProperty().addListener(producer -> {
         chartProducerSelector.valueProperty().addListener((ov,oldval,selectedProducer) -> {
-            leftVboxControls.getChildren().clear();
-            fillControlPanel(selectedProducer, leftVboxControls);
+            leftVboxInit.getChildren().clear();
+            fillControlPanel(selectedProducer, leftVboxInit);
         });
 
         
@@ -84,12 +92,13 @@ public class ChartsController {
             // var expectedTypes = chartProducer.getExpectedColumnsInfo().stream().map(entry -> entry.getValue()).toList();
             var chartProducer = chartProducerSelector.getSelectionModel().getSelectedItem();
             Parent chart = buildChart(chartProducer);
-            // var x = ;
+            
+            leftVboxDisplay.getChildren().clear();
             if (XYChart.class.isAssignableFrom(chart.getClass())) {
-                leftVboxControls.getChildren().add(buildControlPanel((XYChart<Number,Number>)chart));
+                leftVboxDisplay.getChildren().add(buildControlPanel((XYChart<Number,Number>)chart));
             }
             
-            leftVboxControls.getChildren().addAll(chartProducer.createControls());
+            leftVboxDisplay.getChildren().addAll(chartProducer.createControls());
             
             
             borderPane.setCenter(chart);
@@ -98,7 +107,7 @@ public class ChartsController {
 
 
         borderPane.setTop(topHbox);
-        borderPane.setLeft(leftVboxControls);
+        borderPane.setLeft(leftVboxRoot);
 
         
         final Stage stage = new Stage();
@@ -192,22 +201,25 @@ public class ChartsController {
     
     private VBox buildControlPanel(XYChart<Number,Number> chart){
         var vbox = new VBox();
-        var xAxis = (NumberAxis)chart.getXAxis();
+        String[] labels = {"xAxis Auto Ranging","yAxis Auto Ranging"};
+        int i = 0;
+        for (var axis : List.of((NumberAxis)chart.getXAxis(),(NumberAxis)chart.getYAxis())) {
+            var autoRangingCheckBox = new CheckBox(labels[i++]);
+            vbox.getChildren().add(autoRangingCheckBox);
 
-        var xAxisAutocheckBox = new CheckBox("xAxis Auto Ranging");
-        vbox.getChildren().add(xAxisAutocheckBox);
+            autoRangingCheckBox.selectedProperty().bindBidirectional(axis.autoRangingProperty());
 
-        xAxisAutocheckBox.selectedProperty().bindBidirectional(xAxis.autoRangingProperty());
-        xAxisAutocheckBox.setSelected(false);
+            var spinner = createBoundSpinner(axis.lowerBoundProperty());
+            spinner.disableProperty().bind(autoRangingCheckBox.selectedProperty());
+            vbox.getChildren().add(spinner);
 
-        var spinner = createBoundSpinner(xAxis.lowerBoundProperty());
-        spinner.disableProperty().bind(xAxisAutocheckBox.selectedProperty());
-        vbox.getChildren().add(spinner);
+            spinner = createBoundSpinner(axis.upperBoundProperty());
+            spinner.disableProperty().bind(autoRangingCheckBox.selectedProperty());
+            vbox.getChildren().add(spinner);
 
-        spinner = createBoundSpinner(xAxis.upperBoundProperty());
-        spinner.disableProperty().bind(xAxisAutocheckBox.selectedProperty());
-        vbox.getChildren().add(spinner);
-        
+            autoRangingCheckBox.setSelected(true);
+        }
+        // vbox.setStyle("-fx-border-color: black"); // ugly
         return vbox;
     }
     private Spinner<Integer> createBoundSpinner(DoubleProperty targetDouble) {
