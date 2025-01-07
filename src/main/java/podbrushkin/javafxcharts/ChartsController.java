@@ -7,6 +7,8 @@ import java.util.Map;
 import com.google.gson.JsonObject;
 
 import javafx.beans.property.DoubleProperty;
+import javafx.beans.property.IntegerProperty;
+import javafx.beans.property.Property;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.chart.NumberAxis;
@@ -16,7 +18,6 @@ import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.Spinner;
-import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.TableColumn;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
@@ -25,6 +26,7 @@ import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import javafx.util.StringConverter;
+import podbrushkin.javafxcharts.utils.SpinnerDraggable;
 import podbrushkin.javafxtable.TableViewJson;
 
 public class ChartsController {
@@ -37,6 +39,9 @@ public class ChartsController {
         new ScatterChartProducer(),
         new BubbleChartProducer()
     );
+
+    // put props here to prevent garbage collection
+    private static List<Property> strongReferences = new ArrayList<>();
 
     public ChartsController(TableViewJson tableView) {
         this.tableView = tableView;
@@ -184,103 +189,34 @@ public class ChartsController {
         return dataList.stream().map(List::toArray).toArray(Object[][]::new);
     }
 
+    
     private VBox buildControlPanel(XYChart<Number,Number> chart){
         var vbox = new VBox();
-        // var castedChart = (LineChart)chart;
         var xAxis = (NumberAxis)chart.getXAxis();
-        
 
-        Spinner<Double> xLowerSp = createBoundSpinner(xAxis.lowerBoundProperty(), Integer.MIN_VALUE, Integer.MAX_VALUE);
+        var xAxisAutocheckBox = new CheckBox("xAxis Auto Ranging");
+        vbox.getChildren().add(xAxisAutocheckBox);
 
-        var autoRangingCheckBox = new CheckBox("Xaxis.autoRanging");
-        
-        // xAxis.setAutoRanging(true);
-        autoRangingCheckBox.selectedProperty().addListener((obs, oldValue, newValue) -> {
-            xAxis.setAutoRanging(newValue);
-            if (newValue) {
-                // xAxis.lowerBoundProperty().asObject().unbind();
-                // xLowerSp.getValueFactory().setValue(xAxis.getLowerBound()); 
-                // xLowerSp.getValueFactory().valueProperty().bind(xAxis.lowerBoundProperty().asObject());
-            } else {
-                // xAxis.lowerBoundProperty().asObject().bind(xLowerSp.valueProperty());
-                xLowerSp.getValueFactory().setValue(xAxis.getLowerBound()); 
-                
-            }
-        });
-        autoRangingCheckBox.setSelected(true);
-        
-        // autorangingCb.selectedProperty().bindBidirectional(xAxis.autoRangingProperty());
+        xAxisAutocheckBox.selectedProperty().bindBidirectional(xAxis.autoRangingProperty());
+        xAxisAutocheckBox.setSelected(false);
 
-        
-        xLowerSp.disableProperty().bind(autoRangingCheckBox.selectedProperty());
+        var spinner = createBoundSpinner(xAxis.lowerBoundProperty());
+        spinner.disableProperty().bind(xAxisAutocheckBox.selectedProperty());
+        vbox.getChildren().add(spinner);
 
-        // xLowerSp.getValueFactory().valueProperty().bindBidirectional(xAxis.lowerBoundProperty().asObject());
-        // xAxis.lowerBoundProperty().asObject().bindBidirectional(xLowerSp.getValueFactory().valueProperty());
-        
-        
-        xLowerSp.valueProperty().addListener((obs, oldValue, newValue) -> {
-            // if (!xAxis.isAutoRanging()) {
-            xAxis.setLowerBound(newValue);
-            // }
-        });
-
-        vbox.getChildren().addAll(
-            autoRangingCheckBox,
-            new Label("Xaxis.lowerBoundProperty"),
-            xLowerSp
-            // new Label("Xaxis.upperBoundProperty"),
-            // createBoundSpinner(xAxis.upperBoundProperty(), Integer.MIN_VALUE, Integer.MAX_VALUE)
-        );
+        spinner = createBoundSpinner(xAxis.upperBoundProperty());
+        spinner.disableProperty().bind(xAxisAutocheckBox.selectedProperty());
+        vbox.getChildren().add(spinner);
         
         return vbox;
     }
-    public Spinner<Double> createBoundSpinner(DoubleProperty doubleProperty, double min, double max) {
-        Spinner<Double> spinner = new Spinner<>();
-        SpinnerValueFactory<Double> valueFactory = new SpinnerValueFactory.DoubleSpinnerValueFactory(min, max);
-        spinner.setValueFactory(valueFactory);
-        spinner.setEditable(true);
-        // System.out.println(doubleProperty.doubleValue());
-        // doubleProperty.bind(spinner.valueProperty());
-        // spinner.getValueFactory().valueProperty().bindBidirectional(doubleProperty.asObject());
-        final double[] mouseAnchorY = {0d};
-        final double[] spinnerValOnStartDrag = {0d};
-        
-        spinner.getEditor().setOnMousePressed(event -> {
-            // Capture the starting Y position and spinner value
-            mouseAnchorY[0] = event.getSceneY();
-            spinnerValOnStartDrag[0] = spinner.getValue();
-        });
-        // Mouse dragged event to calculate new value
-        spinner.getEditor().setOnMouseDragged(event -> {
-            double deltaY = mouseAnchorY[0] - event.getSceneY();
-            
-            var valAbs = Math.abs(spinnerValOnStartDrag[0]);
-            var factor = String.valueOf(valAbs).length();
-            
-            double newValue = spinnerValOnStartDrag[0]+deltaY*factor;
-            spinner.getValueFactory().setValue(newValue);
-        });
+    private Spinner<Integer> createBoundSpinner(DoubleProperty targetDouble) {
+        var spinner = new SpinnerDraggable();
+
+        // Bind props and keep from gc
+        IntegerProperty prop = IntegerProperty.integerProperty(spinner.getValueFactory().valueProperty());
+        prop.bindBidirectional(targetDouble);
+        strongReferences.add(prop);
         return spinner;
     }
-    /* public HBox createBoundSliderAndTextField(DoubleProperty doubleProperty, double min, double max) {
-        Slider slider = new Slider(min, max, doubleProperty.get());
-        TextField textField = new TextField();
-
-        // Bind the slider value to the DoubleProperty
-        slider.valueProperty().bind(doubleProperty);
-
-        // Bind the text of the TextField to the DoubleProperty
-        textField.textProperty().bindBidirectional(doubleProperty, java.text.NumberFormat.getNumberInstance());
-
-        // Format TextField value when focus is lost
-        textField.focusedProperty().addListener((obs, oldVal, newVal) -> {
-            if (!newVal) {
-                textField.setText(java.text.NumberFormat.getNumberInstance().format(doubleProperty.get()));
-            }
-        });
-
-        HBox hbox = new HBox(10);
-        hbox.getChildren().addAll(slider, textField);
-        return hbox;
-    } */
 }
