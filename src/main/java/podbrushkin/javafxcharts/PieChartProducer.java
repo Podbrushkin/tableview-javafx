@@ -32,7 +32,7 @@ public class PieChartProducer extends Application implements ChartProducer {
 
 
     public ObservableList<PieChart.Data> generateData(Object[][] labelAndValue) {
-        System.out.printf("Object[%s][%s]%n",labelAndValue.length,labelAndValue[0].length);
+        // System.out.printf("Object[%s][%s]%n",labelAndValue.length,labelAndValue[0].length);
         for (var arr : labelAndValue) {
             System.out.println(Arrays.toString(arr));
         }

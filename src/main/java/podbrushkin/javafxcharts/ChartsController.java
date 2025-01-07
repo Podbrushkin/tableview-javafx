@@ -78,6 +78,7 @@ public class ChartsController {
         // chartProducerSelector.getSelectionModel().selectedItemProperty().addListener(producer -> {
         chartProducerSelector.valueProperty().addListener((ov,oldval,selectedProducer) -> {
             leftVboxInit.getChildren().clear();
+            leftVboxDisplay.getChildren().clear();
             fillControlPanel(selectedProducer, leftVboxInit);
         });
 
@@ -224,6 +225,7 @@ public class ChartsController {
     }
     private Spinner<Integer> createBoundSpinner(DoubleProperty targetDouble) {
         var spinner = new SpinnerDraggable();
+        spinner.setEditable(true);
 
         // Bind props and keep from gc
         IntegerProperty prop = IntegerProperty.integerProperty(spinner.getValueFactory().valueProperty());
