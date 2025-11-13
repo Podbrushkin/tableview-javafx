@@ -39,7 +39,8 @@ public class ChartsController {
         new PieChartProducer(), 
         new LineChartProducer(),
         new ScatterChartProducer(),
-        new BubbleChartProducer()
+        new BubbleChartProducer(),
+        new BarChartProducer()
     );
 
     // put props here to prevent garbage collection
@@ -204,6 +205,7 @@ public class ChartsController {
         var vbox = new VBox();
         String[] labels = {"xAxis Auto Ranging","yAxis Auto Ranging"};
         int i = 0;
+        try {
         for (var axis : List.of((NumberAxis)chart.getXAxis(),(NumberAxis)chart.getYAxis())) {
             var autoRangingCheckBox = new CheckBox(labels[i++]);
             vbox.getChildren().add(autoRangingCheckBox);
@@ -220,6 +222,7 @@ public class ChartsController {
 
             autoRangingCheckBox.setSelected(true);
         }
+        } catch (ClassCastException e) { e.printStackTrace();}
         // vbox.setStyle("-fx-border-color: black"); // ugly
         return vbox;
     }

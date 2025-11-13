@@ -8,7 +8,10 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.StringJoiner;
 import java.util.stream.Collectors;
 
@@ -57,18 +60,25 @@ import javafx.util.Callback;
 import javafx.util.Duration;
 import javafx.util.StringConverter;
 import podbrushkin.javafxcharts.ChartsController;
+import podbrushkin.javafxcharts.utils.IOUtils;
 
 public class JsonTableViewer extends Application {
     private TabPane tabPane = new TabPane();
+    private Map<JsonElement,Integer> elementToOriginalIndex = new HashMap<>();
     @Override
     public void start(Stage primaryStage) {
         // hostServices = getHostServices();
-        boolean passThru = getParameters().getRaw().contains("--PassThru");
+        
+        boolean passThru = getParameters().getRaw().contains("--pass-thru");
         primaryStage.setTitle("JSON Table Viewer");
         JsonElement dataEl = getData();
         // Parent root = null;
         if (dataEl.isJsonArray()) {
-            tabPane.getTabs().add(new Tab("root",getTableNode(dataEl.getAsJsonArray(),passThru)));
+            var jsonArr = dataEl.getAsJsonArray();
+            for (int i = 0; i < jsonArr.size(); i++)
+                elementToOriginalIndex.put(jsonArr.get(i), i);
+
+            tabPane.getTabs().add(new Tab("root",getTableNode(jsonArr, passThru)));
         } else if (dataEl.isJsonObject()) {
             var objectWithArrays = dataEl.getAsJsonObject();
             for (var entry : objectWithArrays.entrySet()) {
@@ -113,7 +123,11 @@ public class JsonTableViewer extends Application {
             var submitButton = new Button("Submit");
             submitButton.setStyle("-fx-base: green;");
             submitButton.setOnAction(ea -> {
-                tableView.getSelectionModel().getSelectedItems().forEach(System.out::println);
+                tableView.getSelectionModel().getSelectedItems().forEach(el -> {
+                    if (elementToOriginalIndex.containsKey(el))
+                        System.out.println(elementToOriginalIndex.get(el));
+                    else System.out.println(el);
+                });
                 Platform.exit();
             });
             topRow.getChildren().add(submitButton);
@@ -164,13 +178,16 @@ public class JsonTableViewer extends Application {
         ZoomingPane zp = new ZoomingPane(tableView);
         tableView.addEventFilter(ScrollEvent.SCROLL, e -> {
             if (e.isControlDown()) {
-                Double ov = zp.getZoomFactor();
+                if (e.getDeltaY() == 0d) return;
+                
+                Double zf = zp.getZoomFactor();
+                System.out.println("zf="+zf+"deltaY="+e.getDeltaY());
                 boolean zoomOut = e.getDeltaY() < 0;
-                float delta = 0.08f;
+                float delta = 0.1f;
                 if (zoomOut) {
-                    zp.zoomFactorProperty().setValue(ov*(1f-delta));
+                    zp.zoomFactorProperty().setValue(zf*(1f-delta));
                 } else {
-                    zp.zoomFactorProperty().setValue(ov*(1f+delta));
+                    zp.zoomFactorProperty().setValue(zf*(1f+delta));
                 }
                 e.consume();
             }
@@ -374,28 +391,24 @@ public class JsonTableViewer extends Application {
     }
 
     private JsonElement getData() {
-        var params = getParameters().getRaw();
+        var params = IOUtils.parseArgs(getParameters().getRaw());
         String dataJson = null;
         
         try {
-            if (System.in.available() > 0) {
-                dataJson = readFromStdin();
-            }
-            else if (params.size() == 0) {
+            if (!params.containsKey("in")) {
                 dataJson = getSampleData();
             }
-            else if (params.get(0).equals("-")) {
+            else if (params.get("in").equals("-")) {
                 dataJson = readFromStdin();
+            }
+            else if (!params.get("in").contains(";")) {
+                dataJson = Files.readString(Path.of(params.get("in")), Charset.forName("UTF-8"));
             } 
-            else if (params.size() == 1) {
-                dataJson = Files.readString(Path.of(params.get(0)), Charset.forName("UTF-8"));
-            } 
-            else if (params.size() > 1) {
+            else if (params.get("in").contains(";")) {
                 var gsonObj = new JsonObject();
                 int i = 0;
-                for (String filePath : params) {
-                    if (filePath.startsWith("-")) {continue;}
-                    String arrJsonStr = Files.readString(Path.of(params.get(i++)), Charset.forName("UTF-8"));
+                for (String filePath : params.get("in").split(";")) {
+                    String arrJsonStr = Files.readString(Path.of(filePath), Charset.forName("UTF-8"));
                     JsonArray arrGson = new Gson().fromJson(arrJsonStr, JsonArray.class);
                     String filename = filePath.replaceAll("^.*[\\\\/]", "");
                     gsonObj.add(filename, arrGson);
@@ -408,8 +421,20 @@ public class JsonTableViewer extends Application {
         }
         return new Gson().fromJson(dataJson, JsonElement.class);
     }
+    private static void printHelp() {
+        System.out.println(String.join(System.lineSeparator(),
+        "Display given json as a table. Can display multiple tables in separate tabs. Can expand array of objects into subcolumns.",
+        "",
+        "--in <path...>        # Path to json file or '-' for stdin. Json should be an array or map of arrays. Can provide multiple files for this key in separate args or in single arg delimited with a semicolon.",
+        "--pass-thru        # Window will have 'Submit' button, clicking it will print sequence numbers of selected items and exit. If input wasn't a plain array, will print items."
+        ));
+    }
 
     public static void main(String[] args) {
+        if (Set.of(args).contains("--help")) {
+            printHelp();
+            System.exit(0);
+        }
         launch(args);
     }
 }

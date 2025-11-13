@@ -1,0 +1,212 @@
+[
+  {
+    "Series (optional)": "pow2",
+    "X": "0",
+    "Y": "0"
+  },
+  {
+    "Series (optional)": "linear",
+    "X": "0",
+    "Y": "0"
+  },
+  {
+    "Series (optional)": "pow2",
+    "X": "1",
+    "Y": "1"
+  },
+  {
+    "Series (optional)": "linear",
+    "X": "1",
+    "Y": "1"
+  },
+  {
+    "Series (optional)": "pow2",
+    "X": "2",
+    "Y": "4"
+  },
+  {
+    "Series (optional)": "linear",
+    "X": "2",
+    "Y": "2"
+  },
+  {
+    "Series (optional)": "pow2",
+    "X": "3",
+    "Y": "9"
+  },
+  {
+    "Series (optional)": "linear",
+    "X": "3",
+    "Y": "3"
+  },
+  {
+    "Series (optional)": "pow2",
+    "X": "4",
+    "Y": "16"
+  },
+  {
+    "Series (optional)": "linear",
+    "X": "4",
+    "Y": "4"
+  },
+  {
+    "Series (optional)": "pow2",
+    "X": "5",
+    "Y": "25"
+  },
+  {
+    "Series (optional)": "linear",
+    "X": "5",
+    "Y": "5"
+  },
+  {
+    "Series (optional)": "pow2",
+    "X": "6",
+    "Y": "36"
+  },
+  {
+    "Series (optional)": "linear",
+    "X": "6",
+    "Y": "6"
+  },
+  {
+    "Series (optional)": "pow2",
+    "X": "7",
+    "Y": "49"
+  },
+  {
+    "Series (optional)": "linear",
+    "X": "7",
+    "Y": "7"
+  },
+  {
+    "Series (optional)": "pow2",
+    "X": "8",
+    "Y": "64"
+  },
+  {
+    "Series (optional)": "linear",
+    "X": "8",
+    "Y": "8"
+  },
+  {
+    "Series (optional)": "pow2",
+    "X": "9",
+    "Y": "81"
+  },
+  {
+    "Series (optional)": "linear",
+    "X": "9",
+    "Y": "9"
+  },
+  {
+    "Series (optional)": "pow2",
+    "X": "10",
+    "Y": "100"
+  },
+  {
+    "Series (optional)": "linear",
+    "X": "10",
+    "Y": "10"
+  },
+  {
+    "Series (optional)": "pow2",
+    "X": "11",
+    "Y": "121"
+  },
+  {
+    "Series (optional)": "linear",
+    "X": "11",
+    "Y": "11"
+  },
+  {
+    "Series (optional)": "pow2",
+    "X": "12",
+    "Y": "144"
+  },
+  {
+    "Series (optional)": "linear",
+    "X": "12",
+    "Y": "12"
+  },
+  {
+    "Series (optional)": "pow2",
+    "X": "13",
+    "Y": "169"
+  },
+  {
+    "Series (optional)": "linear",
+    "X": "13",
+    "Y": "13"
+  },
+  {
+    "Series (optional)": "pow2",
+    "X": "14",
+    "Y": "196"
+  },
+  {
+    "Series (optional)": "linear",
+    "X": "14",
+    "Y": "14"
+  },
+  {
+    "Series (optional)": "pow2",
+    "X": "15",
+    "Y": "225"
+  },
+  {
+    "Series (optional)": "linear",
+    "X": "15",
+    "Y": "15"
+  },
+  {
+    "Series (optional)": "pow2",
+    "X": "16",
+    "Y": "256"
+  },
+  {
+    "Series (optional)": "linear",
+    "X": "16",
+    "Y": "16"
+  },
+  {
+    "Series (optional)": "pow2",
+    "X": "17",
+    "Y": "289"
+  },
+  {
+    "Series (optional)": "linear",
+    "X": "17",
+    "Y": "17"
+  },
+  {
+    "Series (optional)": "pow2",
+    "X": "18",
+    "Y": "324"
+  },
+  {
+    "Series (optional)": "linear",
+    "X": "18",
+    "Y": "18"
+  },
+  {
+    "Series (optional)": "pow2",
+    "X": "19",
+    "Y": "361"
+  },
+  {
+    "Series (optional)": "linear",
+    "X": "19",
+    "Y": "19"
+  },
+  {
+    "Series (optional)": "pow2",
+    "X": "20",
+    "Y": "400"
+  },
+  {
+    "Series (optional)": "linear",
+    "X": "20",
+    "Y": "20"
+  }
+]
