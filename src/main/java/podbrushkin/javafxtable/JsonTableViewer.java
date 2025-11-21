@@ -50,6 +50,7 @@ import javafx.scene.control.TableView.ResizeFeatures;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
@@ -60,8 +61,7 @@ import javafx.stage.Stage;
 import javafx.util.Callback;
 import javafx.util.Duration;
 import javafx.util.StringConverter;
-import podbrushkin.javafxcharts.ChartsController;
-import podbrushkin.javafxcharts.utils.IOUtils;
+import podbrushkin.utils.IOUtils;
 
 public class JsonTableViewer extends Application {
     private TabPane tabPane = new TabPane();
@@ -134,11 +134,18 @@ public class JsonTableViewer extends Application {
         Node sf = buildSearchField(tableView);
         HBox.setHgrow(sf, Priority.ALWAYS);
 
-        tableView.setOnKeyPressed(event -> {
+        tableView.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
             if ((event.isControlDown() && event.getCode() == KeyCode.F) || 
                 (event.getCode() == KeyCode.F4)
                 ) {
-                ((HBox)sf).getChildren().get(0).requestFocus();
+                //((HBox)sf).getChildren().get(0).requestFocus();
+                for (var ch : ((HBox)sf).getChildren()) {
+                    if (ch.getClass().equals(TextField.class)) {
+                        ch.requestFocus();
+                        break;
+                    }
+                }
+                
                 event.consume();
             }
         });
@@ -195,10 +202,6 @@ public class JsonTableViewer extends Application {
             }
         });
         topRow.getChildren().add(settingsButton);
-        
-        var chartsButton = new Button("Charts");
-        chartsButton.setOnAction(e -> new ChartsController(tableView).showWindow());
-        topRow.getChildren().add(chartsButton);
         
         root.setCenter(zp);
         // root.setTop(getSearchField(tableView));

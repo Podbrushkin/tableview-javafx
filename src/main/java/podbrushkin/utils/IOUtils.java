@@ -1,4 +1,4 @@
-package podbrushkin.javafxcharts.utils;
+package podbrushkin.utils;
 
 import java.util.HashMap;
 import java.util.List;
