@@ -69,9 +69,14 @@ public class JsonTableViewer extends Application {
     @Override
     public void start(Stage primaryStage) {
         // hostServices = getHostServices();
-        
-        boolean passThru = getParameters().getRaw().contains("--pass-thru");
-        primaryStage.setTitle("JSON Table Viewer");
+        var parametersRaw = getParameters().getRaw();
+        boolean passThru = parametersRaw.contains("--pass-thru");
+
+        String windowTitle = "JSON Table Viewer";
+        if (parametersRaw.contains("--title"))
+            windowTitle = parametersRaw.get(parametersRaw.indexOf("--title")+1);
+
+        primaryStage.setTitle(windowTitle);
         JsonElement dataEl = getData();
         // Parent root = null;
         if (dataEl.isJsonArray()) {
@@ -465,7 +470,8 @@ public class JsonTableViewer extends Application {
         "Display given json as a table. Can display multiple tables in separate tabs. Can expand array of objects into subcolumns.",
         "",
         "--in <path...>        # Path to json file or '-' for stdin. Json should be an array or map of arrays. Can provide multiple files for this key in separate args or in single arg delimited with a semicolon.",
-        "--pass-thru        # Window will have 'Submit' button, clicking it will print sequence numbers of selected items and exit. If input wasn't a plain array, will print items."
+        "--pass-thru        # Window will have 'Submit' button, clicking it will print sequence numbers of selected items and exit. If input wasn't a plain array, will print items.",
+        "--title <string>        # Window title."
         ));
     }
 
