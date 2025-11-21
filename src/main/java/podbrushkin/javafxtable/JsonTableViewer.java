@@ -108,7 +108,9 @@ public class JsonTableViewer extends Application {
     private void setupEscToCloseTab(TabPane tabPane) {
         
         tabPane.setOnKeyPressed(event -> {
-            if (event.getCode() == KeyCode.ESCAPE) {
+            if (event.getCode() == KeyCode.ESCAPE || 
+                (event.isControlDown() && event.getCode() == KeyCode.W)
+                ) {
                 Tab selectedTab = tabPane.getSelectionModel().getSelectedItem();
                 tabPane.getTabs().remove(selectedTab);
                 if (tabPane.getTabs().isEmpty()) {
