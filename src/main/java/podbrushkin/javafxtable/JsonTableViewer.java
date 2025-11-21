@@ -49,6 +49,7 @@ import javafx.scene.control.TableView;
 import javafx.scene.control.TableView.ResizeFeatures;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
+import javafx.scene.input.KeyCode;
 import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
@@ -90,11 +91,26 @@ public class JsonTableViewer extends Application {
                 }
             }
         }
+
+        setupEscToCloseTab(tabPane);
         
         Scene scene = new Scene(tabPane,500,300);
         primaryStage.setScene(scene);
         primaryStage.show();
         
+    }
+
+    private void setupEscToCloseTab(TabPane tabPane) {
+        
+        tabPane.setOnKeyPressed(event -> {
+            if (event.getCode() == KeyCode.ESCAPE) {
+                Tab selectedTab = tabPane.getSelectionModel().getSelectedItem();
+                tabPane.getTabs().remove(selectedTab);
+                if (tabPane.getTabs().isEmpty()) {
+                    Platform.exit();
+                }
+            }
+        });
     }
 
     private BorderPane getTableNode(JsonArray data) {
@@ -131,6 +147,13 @@ public class JsonTableViewer extends Application {
                 Platform.exit();
             });
             topRow.getChildren().add(submitButton);
+
+            tableView.setOnKeyPressed(event -> {
+                if (event.getCode() == KeyCode.ENTER) {
+                    submitButton.fire();
+                    event.consume();
+                }
+            });
         }
         BorderPane root = new BorderPane();
         var controlPanel = buildCommonControl(tableView);
@@ -171,6 +194,9 @@ public class JsonTableViewer extends Application {
         // root.setTop(getSearchField(tableView));
         root.setTop(topRow);
         // root.setBottom();
+        Platform.runLater(() -> {
+            tableView.requestFocus();
+        });
         return root;
     }
 
@@ -181,7 +207,7 @@ public class JsonTableViewer extends Application {
                 if (e.getDeltaY() == 0d) return;
                 
                 Double zf = zp.getZoomFactor();
-                System.out.println("zf="+zf+"deltaY="+e.getDeltaY());
+                //System.out.println("zf="+zf+"deltaY="+e.getDeltaY());
                 boolean zoomOut = e.getDeltaY() < 0;
                 float delta = 0.1f;
                 if (zoomOut) {

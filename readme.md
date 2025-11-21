@@ -7,6 +7,7 @@ Display given json as a table. Can display multiple tables in separate tabs. Can
 
 ```powershell
 # Build and run with Java 21+:
+# sudo apt install openjdk-21-jdk
 mvn clean compile package -q -e
 java -jar ./target/javafx-tables-json-0.11-shaded.jar
 
