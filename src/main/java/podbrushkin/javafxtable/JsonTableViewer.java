@@ -131,8 +131,18 @@ public class JsonTableViewer extends Application {
 
         // final Pane spacer = new Pane();
         // HBox.setHgrow(spacer, Priority.ALWAYS);
-        var sf = buildSearchField(tableView);
+        Node sf = buildSearchField(tableView);
         HBox.setHgrow(sf, Priority.ALWAYS);
+
+        tableView.setOnKeyPressed(event -> {
+            if ((event.isControlDown() && event.getCode() == KeyCode.F) || 
+                (event.getCode() == KeyCode.F4)
+                ) {
+                ((HBox)sf).getChildren().get(0).requestFocus();
+                event.consume();
+            }
+        });
+
         HBox topRow = new HBox(sf);
         if (passThru) {
             tableView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
