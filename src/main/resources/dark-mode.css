@@ -1,0 +1,11 @@
+.root {
+    -fx-base: #2b2b2b;
+    -fx-background: #2b2b2b;
+    -fx-control-inner-background: #3c3c3c;
+    -fx-text-base-color: white;
+}
+
+/* Specific fix for TextField and TextArea prompt text which remain dark gray otherwise */
+.text-input {
+    -fx-prompt-text-fill: #aaaaaa;
+}

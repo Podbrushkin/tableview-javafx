@@ -75,6 +75,7 @@ public class JsonTableViewer extends Application {
         String windowTitle = "JSON Table Viewer";
         if (parametersRaw.contains("--title"))
             windowTitle = parametersRaw.get(parametersRaw.indexOf("--title")+1);
+        
 
         primaryStage.setTitle(windowTitle);
         JsonElement dataEl = getData();
@@ -100,6 +101,12 @@ public class JsonTableViewer extends Application {
         setupEscToCloseTab(tabPane);
         
         Scene scene = new Scene(tabPane,500,300);
+
+        if (parametersRaw.contains("--dark")) {
+            //Application.setUserAgentStylesheet(Application.STYLESHEET_CASPIAN);
+            scene.getStylesheets().add(getClass().getClassLoader().getResource("dark-mode.css").toExternalForm());
+        }
+
         primaryStage.setScene(scene);
         primaryStage.show();
         
