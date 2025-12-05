@@ -1,3 +1,13 @@
+
+<img width="800" height="429" alt="Screenshot from 2025-12-05 12-46-25" src="https://github.com/user-attachments/assets/2e4338c0-4179-4513-a61d-9578167692b2" />
+
+To use as Out-GridView in Powershell:
+```powershell
+# mvn clean compile package -q -e
+. ./Out-GridViewFX.ps1
+Get-Process | Out-GridViewFX -PassThru
+```
+
 ```
 Display given json as a table. Can display multiple tables in separate tabs. Can expand array of objects into subcolumns.
 
@@ -15,4 +25,5 @@ java -jar ./target/javafx-tables-json-0.11-shaded.jar
 Get-Process | select id,ProcessName -f 100 | ConvertTo-Json > delme.json
 gci -Recurse -File | select FullName,Length | ConvertTo-Json > delme2.json
 java -jar .\target\javafx-tables-json-0.11-shaded.jar --in .\delme.json .\delme2.json
+
 ```
