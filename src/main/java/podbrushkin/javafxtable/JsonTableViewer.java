@@ -63,6 +63,7 @@ import javafx.util.Duration;
 import javafx.util.StringConverter;
 import podbrushkin.utils.IOUtils;
 
+// TODO: closing last tab with mouse should exit app
 public class JsonTableViewer extends Application {
     private TabPane tabPane = new TabPane();
     private Map<JsonElement,Integer> elementToOriginalIndex = new HashMap<>();
@@ -102,8 +103,10 @@ public class JsonTableViewer extends Application {
         
         Scene scene = new Scene(tabPane,500,300);
 
+        if (parametersRaw.contains("--caspian")) {
+            Application.setUserAgentStylesheet(Application.STYLESHEET_CASPIAN);
+        }
         if (parametersRaw.contains("--dark")) {
-            //Application.setUserAgentStylesheet(Application.STYLESHEET_CASPIAN);
             scene.getStylesheets().add(getClass().getClassLoader().getResource("dark-mode.css").toExternalForm());
         }
 
@@ -113,7 +116,7 @@ public class JsonTableViewer extends Application {
     }
 
     private void setupEscToCloseTab(TabPane tabPane) {
-        
+        // TODO: escape when search in focus should move focus to table
         tabPane.setOnKeyPressed(event -> {
             if (event.getCode() == KeyCode.ESCAPE || 
                 (event.isControlDown() && event.getCode() == KeyCode.W)
@@ -480,7 +483,9 @@ public class JsonTableViewer extends Application {
         "",
         "--in <path...>        # Path to json file or '-' for stdin. Json should be an array or map of arrays. Can provide multiple files for this key in separate args or in single arg delimited with a semicolon.",
         "--pass-thru        # Window will have 'Submit' button, clicking it will print sequence numbers of selected items and exit. If input wasn't a plain array, will print items.",
-        "--title <string>        # Window title."
+        "--title <string>        # Window title.",
+        "--dark        # Use dark style.",
+        "--caspian        # Use Caspian - old JavaFX style replaced by Modena. Compatible with <--dark>."
         ));
     }
 
